@@ -16,22 +16,31 @@ function Router() {
     return auth.onAuthStateChanged((user) => {
       setUser(user);
       if (user) {
-        // Add Firebase ID token to all API requests
+        // Add Firebase ID token to API requests
         const originalFetch = window.fetch;
         window.fetch = async (...args) => {
           const [resource, config] = args;
-          const token = await user.getIdToken();
-          
-          const modifiedConfig = {
-            ...config,
-            headers: {
-              ...config?.headers,
-              "x-firebase-uid": user.uid,
-              "Authorization": `Bearer ${token}`,
-            },
-          };
 
-          return originalFetch(resource, modifiedConfig);
+          // Only intercept API requests
+          if (typeof resource === 'string' && resource.startsWith('/api')) {
+            try {
+              const token = await user.getIdToken();
+              const modifiedConfig = {
+                ...config,
+                headers: {
+                  ...config?.headers,
+                  "Authorization": `Bearer ${token}`,
+                },
+              };
+              return originalFetch(resource, modifiedConfig);
+            } catch (error) {
+              console.error("Error getting Firebase token:", error);
+              return originalFetch(resource, config);
+            }
+          }
+
+          // Pass through non-API requests unchanged
+          return originalFetch(resource, config);
         };
       }
     });
@@ -42,7 +51,10 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard">
-        {user ? <Dashboard /> : () => window.location.replace("/login")}
+        {user ? <Dashboard /> : () => {
+          window.location.href = "/login";
+          return null;
+        }}
       </Route>
       <Route component={NotFound} />
     </Switch>
