@@ -3,10 +3,12 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, User } from "firebase/aut
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  authDomain: "landhacker-9a7c1.firebaseapp.com",
+  databaseURL: "https://landhacker-9a7c1-default-rtdb.firebaseio.com",
+  projectId: "landhacker-9a7c1",
+  storageBucket: "landhacker-9a7c1.firebasestorage.app",
+  messagingSenderId: "1062549941272",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
