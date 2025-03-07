@@ -8,19 +8,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { signInWithGoogle } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   async function handleLogin() {
     try {
       setLoading(true);
       const user = await signInWithGoogle();
-      
+
       // Create or verify user in our backend
       await apiRequest("POST", "/api/auth/login", {
         firebaseUid: user.uid,
@@ -31,6 +33,21 @@ export default function Login() {
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Login failed:", error);
+
+      // Show user-friendly error message
+      if (error.code === "auth/unauthorized-domain") {
+        toast({
+          title: "Login Error",
+          description: `This domain is not authorized for login. Please add "${window.location.hostname}" to Firebase authorized domains in your Firebase Console under Authentication > Settings.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login Failed",
+          description: "An error occurred during login. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -54,6 +71,9 @@ export default function Login() {
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Continue with Google
           </Button>
+          <p className="mt-4 text-sm text-muted-foreground text-center">
+            Domain to authorize: {window.location.hostname}
+          </p>
         </CardContent>
       </Card>
     </div>
