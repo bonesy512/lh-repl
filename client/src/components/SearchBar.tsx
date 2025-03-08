@@ -160,11 +160,13 @@ export function SearchBar({ onSearch, mapRef }: Props) {
         };
 
         const property: PropertyDetailsResponse = {
-          propertyId: `mb_${Date.now()}_${index}`,
+          id: `mb_${Date.now()}_${index}`,
+          isSaved: false,
+          propertyId: feature.id,
           address,
           latitude: feature.center[1],
           longitude: feature.center[0],
-          zpid: 0 // Required by type but not used for search results
+          zpid: 0
         };
 
         try {
@@ -184,6 +186,26 @@ export function SearchBar({ onSearch, mapRef }: Props) {
           }
         } catch (error) {
           console.error('Error fetching distance:', error);
+        }
+
+        // Get price estimates
+        try {
+          const priceResponse = await fetch('/api/scrape/estimates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              address: property.address.streetAddress,
+              city: property.address.city,
+              state: property.address.state
+            })
+          });
+
+          if (priceResponse.ok) {
+            const priceData = await priceResponse.json();
+            property.priceComparisons = priceData;
+          }
+        } catch (error) {
+          console.error('Error fetching price estimates:', error);
         }
 
         return property;
@@ -225,8 +247,8 @@ export function SearchBar({ onSearch, mapRef }: Props) {
             <CommandGroup>
               {searchResults.map((result) => (
                 <CommandItem
-                  key={result.propertyId}
-                  value={result.propertyId}
+                  key={result.id}
+                  value={result.id}
                   onSelect={() => {
                     setFocused(false);
                     setIsLoadingProperty(true);
