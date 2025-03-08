@@ -67,7 +67,7 @@ app.use((req, res, next) => {
       try {
         // Ensure the public directory exists
         const publicDir = path.resolve(__dirname, 'public');
-        const distDir = path.resolve(__dirname, '..', 'client', 'dist');
+        const distDir = path.resolve(__dirname, '..', 'dist', 'public');
 
         if (!fs.existsSync(publicDir)) {
           fs.mkdirSync(publicDir, { recursive: true });
@@ -87,7 +87,14 @@ app.use((req, res, next) => {
           await execAsync(`cp -r ${distDir}/* ${publicDir}/`);
           console.log('Static files copied successfully');
         } else {
-          throw new Error(`Build directory not found: ${distDir}`);
+          console.log(`Checking alternative build directory locations...`);
+          const altDistDir = path.resolve(__dirname, '..', 'dist');
+          if (fs.existsSync(altDistDir)) {
+            await execAsync(`cp -r ${altDistDir}/* ${publicDir}/`);
+            console.log('Static files copied from alternate location successfully');
+          } else {
+            throw new Error(`Build directory not found: ${distDir} or ${altDistDir}`);
+          }
         }
 
         serveStatic(app);
