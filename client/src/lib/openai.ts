@@ -46,8 +46,8 @@ export async function analyzeProperty(
   currentPrice?: number
 ): Promise<PropertyAnalysis> {
   try {
-    // Generate a cache key from the property details
-    const cacheKey = `${address}_${acres}_${latitude}_${longitude}_${currentPrice || 'no_price'}`;
+    // Generate a safe cache key from the property details
+    const cacheKey = `analysis_${Math.abs(latitude)}_${Math.abs(longitude)}_${acres}`;
 
     // Check cache first
     const cachedResult = await getCachedAnalysis(cacheKey);
@@ -113,8 +113,8 @@ export async function generateMarketingDescription(
   targetAudience: string
 ): Promise<string> {
   try {
-    // Generate a cache key for marketing content
-    const cacheKey = `marketing_${propertyDetails.id}_${targetAudience}`;
+    // Generate a safe cache key for marketing content
+    const cacheKey = `marketing_${propertyDetails.id}_${targetAudience.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
     // Check cache first
     const cachedResult = await getCachedAnalysis(cacheKey);
