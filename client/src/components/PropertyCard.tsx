@@ -1,94 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAppStore } from "@/utils/store";
 import { Card } from "@/components/ui/card";
-import { HomeIcon, ExternalLinkIcon, XIcon, UserIcon, BrainIcon } from "lucide-react";
-import { toast } from "sonner";
-import type { PropertyDetailsResponse } from "types";
+import { HomeIcon, ExternalLink as ExternalLinkIcon, X as XIcon, User as UserIcon, Brain as BrainIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import type { Parcel } from "@shared/schema";
 
-export interface Props {
-  onViewMore?: () => void;
+export interface PropertyCardProps {
+  parcel: Parcel;
+  onAnalyze?: () => void;
+  onCreateCampaign?: () => void;
 }
 
-export function PropertyCard({ onViewMore }: Props) {
-  const { 
-    setPropertyCardVisible, 
-    isLoadingProperty, 
-    selectedProperty, 
-    userProfile,
-    addRunningProperty,
-    runningProperties,
-    setPropertyForAnalysis,
-    setAnalysisDialogOpen
-  } = useAppStore();
-
-  // Temporarily allow analysis for testing
-  const checkSubscription = () => {
-    // TODO: Restore subscription check after testing
-    return true;
-    // return userProfile?.subscriptionTier === "monthly" || 
-    //        userProfile?.subscriptionStatus === "active" || 
-    //        userProfile?.subscriptionStatus === "cancelled_active";
-  };
-
-  const handleSubscriptionError = () => {
-    toast.error("You need an active subscription to access this feature", {
-      duration: 5000,
-      description: "Subscribe in your profile to unlock all features",
-      action: {
-        label: "Profile",
-        onClick: () => {
-          const event = new CustomEvent("open-user-dialog");
-          window.dispatchEvent(event);
-        }
-      }
-    });
-  };
-
-  const handleViewMore = () => {
-    console.log("View More button clicked");
-    if (checkSubscription()) {
-      if (onViewMore) {
-        onViewMore();
-      } else {
-        console.error("onViewMore handler not provided");
-      }
-    } else {
-      handleSubscriptionError();
-    }
-  };
-
-  const handleAnalyze = () => {
-    console.log("Analyze button clicked");
-    console.log("Selected property:", selectedProperty);
-
-    if (!selectedProperty?.address?.streetAddress) {
-      console.error("Invalid property selected");
-      toast.error("Invalid property selected");
-      return;
-    }
-
-    console.log("Checking subscription status");
-    console.log("User profile:", userProfile);
-
-    if (checkSubscription()) {
-      const address = selectedProperty.address.streetAddress;
-      console.log("Adding property to analysis queue:", address);
-      addRunningProperty(address);
-
-      // Update analysis state directly in store
-      console.log("Setting property for analysis:", selectedProperty);
-      setPropertyForAnalysis(selectedProperty);
-      console.log("Opening analysis dialog");
-      setAnalysisDialogOpen(true);
-    } else {
-      console.log("Subscription check failed");
-      handleSubscriptionError();
-    }
-  };
-
-  const isAnalyzing = selectedProperty?.address?.streetAddress && 
-    runningProperties.includes(selectedProperty.address.streetAddress);
+export function PropertyCard({ parcel, onAnalyze, onCreateCampaign }: PropertyCardProps) {
+  const { toast } = useToast();
 
   return (
     <Card className="bg-card shadow-lg rounded-sm">
@@ -98,91 +22,60 @@ export function PropertyCard({ onViewMore }: Props) {
             Property Details
           </h2>
           <div className="flex items-center gap-1">
-            {selectedProperty && !isLoadingProperty && selectedProperty.propertyId && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Analyze Property"
-                  onClick={handleAnalyze}
-                  disabled={isAnalyzing}
-                >
-                  <BrainIcon className={`w-4 h-4 ${isAnalyzing ? 'animate-pulse' : ''}`} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="View Details"
-                  onClick={handleViewMore}
-                >
-                  <ExternalLinkIcon className="w-4 h-4" />
-                </Button>
-              </>
-            )}
             <Button
               variant="ghost"
               size="icon"
-              title="Hide Card"
-              onClick={() => setPropertyCardVisible(false)}
+              title="Analyze Property"
+              onClick={onAnalyze}
             >
-              <XIcon className="w-4 h-4" />
+              <BrainIcon className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Create Campaign"
+              onClick={onCreateCampaign}
+            >
+              <ExternalLinkIcon className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
-        {isLoadingProperty ? (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <HomeIcon className="w-4 h-4" />
-                Address
-              </div>
-              <Skeleton className="h-5 w-full" />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <HomeIcon className="w-4 h-4" />
+              Address
             </div>
+            <p className="text-sm font-medium break-words">
+              {parcel.address}
+            </p>
+          </div>
 
+          {parcel.acres && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <UserIcon className="w-4 h-4" />
-                Owner
-              </div>
-              <Skeleton className="h-5 w-full" />
-            </div>
-          </div>
-        ) : selectedProperty ? (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <HomeIcon className="w-4 h-4" />
-                Address
+                Size
               </div>
               <p className="text-sm font-medium break-words">
-                {selectedProperty.address?.streetAddress}, {selectedProperty.address?.city}, {selectedProperty.address?.state} {selectedProperty.address?.zipcode}
+                {parcel.acres} acres
               </p>
             </div>
+          )}
 
-            {selectedProperty.ownerName && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <UserIcon className="w-4 h-4" />
-                  Owner
-                </div>
-                <p className="text-sm font-medium break-words">
-                  {selectedProperty.ownerName}
-                </p>
+          {parcel.price && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <UserIcon className="w-4 h-4" />
+                Listed Price
               </div>
-            )}
-
-            {isAnalyzing && (
-              <div className="text-sm text-muted-foreground animate-pulse">
-                Analyzing property...
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-md text-muted-foreground">Please select a valid property</p>
-          </div>
-        )}
+              <p className="text-sm font-medium break-words">
+                ${parcel.price.toLocaleString()}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </Card>
   );

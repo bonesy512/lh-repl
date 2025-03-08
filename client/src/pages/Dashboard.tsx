@@ -19,6 +19,19 @@ import { CreditCard, Users, Activity, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+interface User {
+  id: number;
+  username: string;
+  credits: number;
+}
+
+interface Invoice {
+  id: number;
+  date: string;
+  amount: number;
+  description: string;
+}
+
 export default function Dashboard() {
   const { toast } = useToast();
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
@@ -26,17 +39,17 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
 
   // Fetch user data
-  const { data: user, isLoading: loadingUser } = useQuery({
+  const { data: user, isLoading: loadingUser } = useQuery<User>({
     queryKey: ["/api/user"],
   });
 
   // Fetch parcels data
-  const { data: parcels, isLoading: loadingParcels, error: parcelsError } = useQuery({
+  const { data: parcels = [], isLoading: loadingParcels, error: parcelsError } = useQuery<Parcel[]>({
     queryKey: ["/api/parcels"],
   });
 
   // Fetch invoices data
-  const { data: invoices, isLoading: loadingInvoices } = useQuery({
+  const { data: invoices = [], isLoading: loadingInvoices } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
   });
 
@@ -103,6 +116,7 @@ export default function Dashboard() {
               </p>
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Team Members</CardTitle>
@@ -115,6 +129,7 @@ export default function Dashboard() {
               </p>
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -123,12 +138,13 @@ export default function Dashboard() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{parcels?.length || 0}</div>
+              <div className="text-2xl font-bold">{parcels.length}</div>
               <p className="text-xs text-muted-foreground">
                 Total properties analyzed
               </p>
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Subscription</CardTitle>
@@ -152,7 +168,7 @@ export default function Dashboard() {
           <TabsContent value="map" className="space-y-8">
             {/* Map Component */}
             <PropertyMap
-              parcels={parcels || []}
+              parcels={parcels}
               onParcelSelect={handleParcelSelect}
               loading={loadingParcels}
             />
@@ -160,7 +176,7 @@ export default function Dashboard() {
             {/* Property Card */}
             {selectedParcel && (
               <PropertyCard
-                property={selectedParcel}
+                parcel={selectedParcel}
                 onAnalyze={handleAnalyze}
                 onCreateCampaign={handleCreateCampaign}
               />
@@ -181,7 +197,7 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <div className="space-y-8">
-                      {(invoices || []).map((invoice: any) => (
+                      {invoices.map((invoice) => (
                         <div key={invoice.id} className="flex items-center">
                           <div className="space-y-1">
                             <p className="text-sm font-medium leading-none">
@@ -196,7 +212,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       ))}
-                      {!invoices?.length && (
+                      {invoices.length === 0 && (
                         <p className="text-center text-muted-foreground">
                           No invoices found
                         </p>
@@ -227,6 +243,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </div>
+
             {/* Properties Analyzed Section */}
             <Card>
               <CardHeader>
@@ -234,7 +251,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {parcels?.map((parcel: Parcel) => (
+                  {parcels.map((parcel) => (
                     <div key={parcel.id} className="flex items-start space-x-4 border-b pb-4 last:border-0">
                       <div className="flex-1 space-y-1">
                         <p className="text-sm font-medium leading-none">
@@ -259,7 +276,7 @@ export default function Dashboard() {
                     </div>
                   ))}
 
-                  {!parcels?.length && (
+                  {parcels.length === 0 && (
                     <div className="text-center py-6 text-muted-foreground">
                       No properties analyzed yet
                     </div>
