@@ -5,6 +5,7 @@ import { MeasurementLayer } from "./map/MeasurementLayer";
 import { MeasurementControls } from "./map/MeasurementControls";
 import { MeasurementCard } from "./map/MeasurementCard";
 import { PropertyCard } from "./PropertyCard";
+import { SearchBar } from "./SearchBar";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -20,7 +21,6 @@ interface PropertyMapProps {
   onViewMore?: () => void;
 }
 
-// Custom control for MapboxDraw
 interface DrawControlProps {
   displayControlsDefault: boolean;
   controls: {
@@ -74,7 +74,9 @@ export default function PropertyMap({
     setViewportCenter,
     addMeasurementPoint,
     propertyCardVisible,
-    selectedProperty
+    selectedProperty,
+    setPropertyCardVisible,
+    setSelectedProperty
   } = useAppStore();
 
   // Get user's location on mount
@@ -114,6 +116,11 @@ export default function PropertyMap({
 
   return (
     <div className="w-full h-[600px] relative">
+      {/* Search Bar */}
+      <div className="absolute top-4 left-4 z-[3] w-[400px] max-w-[calc(100vw-2rem)]">
+        <SearchBar mapRef={mapRef} />
+      </div>
+
       {/* Measurement Controls */}
       <div className="absolute bottom-[175px] left-2.5 z-[1]">
         <MeasurementControls />
@@ -142,6 +149,12 @@ export default function PropertyMap({
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
         mapStyle="mapbox://styles/mapbox/streets-v11"
         style={{ width: '100%', height: '100%' }}
+        onClick={(evt) => {
+          // If in measurement mode, add point
+          if (measurementMode !== 'none') {
+            addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
+          }
+        }}
       >
         {/* Measurement Layer */}
         <MeasurementLayer />
@@ -164,18 +177,20 @@ export default function PropertyMap({
               if (measurementMode !== 'none') {
                 addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
               } else {
-                if (mapRef.current) {
-                  const features = mapRef.current.queryRenderedFeatures(evt.point, {
-                    layers: ['layer'] // Assumes a layer named 'layer' exists
-                  });
-                  if (features.length > 0) {
-                    const feature = features[0];
-                    // Update selectedParcel instead of calling fetchPropertyDetails
-                    setSelectedParcel(parcel);
-                    if (onParcelSelect) {
-                      onParcelSelect(parcel);
-                    }
-                  }
+                setSelectedParcel(parcel);
+                setSelectedProperty({
+                  propertyId: parcel.id,
+                  address: {
+                    streetAddress: parcel.address,
+                    city: parcel.city,
+                    state: parcel.state,
+                    zipcode: parcel.zipcode
+                  },
+                  ownerName: parcel.ownerName
+                });
+                setPropertyCardVisible(true);
+                if (onParcelSelect) {
+                  onParcelSelect(parcel);
                 }
               }
             }}
