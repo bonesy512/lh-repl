@@ -22,6 +22,11 @@ type MapState = {
   measurements: Measurement[];
   addCompletedMeasurement: (measurement: Measurement) => void;
   clearMeasurements: () => void;
+  clearCompletedMeasurements: () => void;
+  measurementPoints: number[][];
+  addMeasurementPoint: (point: number[]) => void;
+  currentMeasurement: number | null;
+  setCurrentMeasurement: (value: number | null) => void;
   viewportCenter: [number, number];
   setViewportCenter: (center: [number, number]) => void;
   mapStyle: string;
@@ -34,33 +39,48 @@ export const useAppStore = create<MapState>()(
       // Property selection
       selectedProperty: null,
       setSelectedProperty: (property) => set({ selectedProperty: property }),
-      
+
       // Loading states
       isLoadingProperty: false,
       setIsLoadingProperty: (loading) => set({ isLoadingProperty: loading }),
       isStyleLoading: true,
       setIsStyleLoading: (loading) => set({ isStyleLoading: loading }),
-      
+
       // Map centering
       shouldCenterMap: false,
       setShouldCenterMap: (center) => set({ shouldCenterMap: center }),
-      
+
       // Measurement mode
       measurementMode: 'none',
       setMeasurementMode: (mode) => set({ measurementMode: mode }),
-      
+
       // Measurements
       measurements: [],
       addCompletedMeasurement: (measurement) =>
         set((state) => ({
           measurements: [...state.measurements, measurement],
         })),
-      clearMeasurements: () => set({ measurements: [] }),
-      
+      clearMeasurements: () => set({ 
+        measurementPoints: [],
+        currentMeasurement: null
+      }),
+      clearCompletedMeasurements: () => set({ measurements: [] }),
+
+      // Measurement points
+      measurementPoints: [],
+      addMeasurementPoint: (point) =>
+        set((state) => ({
+          measurementPoints: [...state.measurementPoints, point],
+        })),
+
+      // Current measurement
+      currentMeasurement: null,
+      setCurrentMeasurement: (value) => set({ currentMeasurement: value }),
+
       // Viewport
       viewportCenter: [-96.7970, 32.7767], // Default to Dallas, TX
       setViewportCenter: (center) => set({ viewportCenter: center }),
-      
+
       // Map style
       mapStyle: 'streets-v11',
       setMapStyle: (style) => set({ mapStyle: style }),
