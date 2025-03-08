@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { queryClient } from "./lib/queryClient";
 import { Navigation } from "@/components/Navigation";
+import { AnalysisDialog } from "@/components/AnalysisDialog";
 import Home from "@/pages/Home";
 import Features from "@/pages/Features";
 import Pricing from "@/pages/Pricing";
@@ -14,22 +15,22 @@ import Login from "@/pages/Login";
 import BetaLanding from "@/pages/BetaLanding";
 import NotFound from "@/pages/not-found";
 import Subscription from "@/pages/Subscription";
-import PurchaseTokens from "@/pages/PurchaseTokens"; // Added import
+import PurchaseTokens from "@/pages/PurchaseTokens";
+import type { PropertyDetailsResponse } from "types";
 import './App.css';
 
 function Router() {
   const [user, setUser] = useState(auth.currentUser);
+  const [analysisDialogOpen, setAnalysisDialogOpen] = useState(false);
 
   useEffect(() => {
     return auth.onAuthStateChanged((user) => {
       setUser(user);
       if (user) {
-        // Add Firebase ID token to API requests
         const originalFetch = window.fetch;
         window.fetch = async (...args) => {
           const [resource, config] = args;
 
-          // Only intercept API requests
           if (typeof resource === 'string' && resource.startsWith('/api')) {
             try {
               const token = await user.getIdToken();
@@ -47,11 +48,24 @@ function Router() {
             }
           }
 
-          // Pass through non-API requests unchanged
           return originalFetch(resource, config);
         };
       }
     });
+  }, []);
+
+  useEffect(() => {
+    const handleAnalysisDialog = (event: Event) => {
+      console.log("Received analysis dialog event");
+      const customEvent = event as CustomEvent<{ property: PropertyDetailsResponse }>;
+      console.log("Property data:", customEvent.detail.property);
+      setAnalysisDialogOpen(true);
+    };
+
+    window.addEventListener('open-analysis-dialog', handleAnalysisDialog);
+    return () => {
+      window.removeEventListener('open-analysis-dialog', handleAnalysisDialog);
+    };
   }, []);
 
   return (
@@ -66,9 +80,14 @@ function Router() {
         <Route path="/team" component={TeamMembers} />
         <Route path="/beta" component={BetaLanding} />
         <Route path="/subscription" component={Subscription} />
-        <Route path="/purchase-tokens" component={PurchaseTokens} /> {/* Added route */}
+        <Route path="/purchase-tokens" component={PurchaseTokens} />
         <Route component={NotFound} />
       </Switch>
+
+      <AnalysisDialog 
+        isOpen={analysisDialogOpen} 
+        onClose={() => setAnalysisDialogOpen(false)} 
+      />
     </>
   );
 }

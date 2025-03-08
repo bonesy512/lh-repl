@@ -58,14 +58,18 @@ export function PropertyCard({ onViewMore }: Props) {
       return;
     }
 
+    console.log("Analysis requested for property:", selectedProperty);
+
     if (checkSubscription()) {
       const address = selectedProperty.address.streetAddress;
+      console.log("Adding property to analysis queue:", address);
       addRunningProperty(address);
 
       // Open analysis dialog with property data
       const event = new CustomEvent("open-analysis-dialog", { 
         detail: { property: selectedProperty }
       });
+      console.log("Dispatching analysis dialog event:", event);
       window.dispatchEvent(event);
     } else {
       handleSubscriptionError();
