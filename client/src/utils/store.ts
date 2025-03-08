@@ -8,6 +8,11 @@ type Measurement = {
   coordinates: number[][];
 };
 
+type UserProfile = {
+  subscriptionTier?: 'monthly' | 'yearly';
+  subscriptionStatus?: 'active' | 'cancelled_active' | 'cancelled' | 'none';
+};
+
 type MapState = {
   selectedProperty: any | null;
   setSelectedProperty: (property: any | null) => void;
@@ -32,6 +37,10 @@ type MapState = {
   setViewportCenter: (center: [number, number]) => void;
   mapStyle: string;
   setMapStyle: (style: string) => void;
+  propertyCardVisible: boolean;
+  setPropertyCardVisible: (visible: boolean) => void;
+  userProfile: UserProfile | null;
+  setUserProfile: (profile: UserProfile | null) => void;
 };
 
 export const useAppStore = create<MapState>()(
@@ -86,6 +95,14 @@ export const useAppStore = create<MapState>()(
       // Map style
       mapStyle: 'streets-v11',
       setMapStyle: (style) => set({ mapStyle: style }),
+
+      // Property card visibility
+      propertyCardVisible: true,
+      setPropertyCardVisible: (visible) => set({ propertyCardVisible: visible }),
+
+      // User profile
+      userProfile: null,
+      setUserProfile: (profile) => set({ userProfile: profile }),
     }),
     {
       name: 'map-storage',

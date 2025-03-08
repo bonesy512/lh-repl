@@ -1,8 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+
+
 import { useAppStore } from "@/utils/store";
 import { Card } from "@/components/ui/card";
 import { HomeIcon, ExternalLinkIcon, XIcon, UserIcon } from "lucide-react";
+
+import type { PropertyDetailsResponse } from "types";
 import { toast } from "sonner";
 
 export interface Props {
@@ -14,7 +18,7 @@ export function PropertyCard({ onViewMore }: Props) {
 
   const handleViewMore = () => {
     console.log("Subscription status:", userProfile?.subscriptionTier, userProfile?.subscriptionStatus);
-
+    
     if (userProfile?.subscriptionTier === "monthly" || userProfile?.subscriptionStatus === "active" || userProfile?.subscriptionStatus === "cancelled_active") {
       console.log("User has active subscription, opening dialog");
       onViewMore();
@@ -101,7 +105,7 @@ export function PropertyCard({ onViewMore }: Props) {
             {selectedProperty.ownerName && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <UserIcon className="w-4 h-4" />
+                  <HomeIcon className="w-4 h-4" />
                   Owner
                 </div>
                 <p className="text-sm font-medium break-words">
