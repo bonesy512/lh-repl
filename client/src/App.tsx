@@ -11,6 +11,7 @@ import Pricing from "@/pages/Pricing";
 import Dashboard from "@/pages/Dashboard";
 import TeamMembers from "@/pages/TeamMembers";
 import Login from "@/pages/Login";
+import BetaLanding from "@/pages/BetaLanding";
 import NotFound from "@/pages/not-found";
 import './App.css';
 
@@ -61,6 +62,7 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/team" component={TeamMembers} />
+        <Route path="/beta" component={BetaLanding} />
         <Route component={NotFound} />
       </Switch>
     </>

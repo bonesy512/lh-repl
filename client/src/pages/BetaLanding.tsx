@@ -22,7 +22,7 @@ const betaSignupSchema = z.object({
 
 type BetaSignupForm = z.infer<typeof betaSignupSchema>;
 
-export default function Home() {
+export default function BetaLanding() {
   const { toast } = useToast();
   const form = useForm<BetaSignupForm>({
     resolver: zodResolver(betaSignupSchema),
