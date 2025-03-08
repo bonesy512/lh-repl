@@ -36,27 +36,40 @@ export function Navigation() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center space-x-8">
           {/* Logo */}
-          <div className="font-bold text-xl">LandHacker</div>
-          
+          <div 
+            className="font-bold text-xl cursor-pointer" 
+            onClick={() => navigate("/")}
+          >
+            LandHacker
+          </div>
+
           {/* Main Navigation */}
           <nav className="hidden md:flex items-center space-x-4">
             <Button
-              variant={location === "/" ? "default" : "ghost"}
-              onClick={() => navigate("/")}
+              variant={location === "/features" ? "default" : "ghost"}
+              onClick={() => navigate("/features")}
             >
-              Home
+              Features
             </Button>
             <Button
-              variant={location === "/dashboard" ? "default" : "ghost"}
-              onClick={() => navigate("/dashboard")}
+              variant={location === "/pricing" ? "default" : "ghost"}
+              onClick={() => navigate("/pricing")}
             >
-              Dashboard
+              Pricing
             </Button>
+            {user && (
+              <Button
+                variant={location === "/dashboard" ? "default" : "ghost"}
+                onClick={() => navigate("/dashboard")}
+              >
+                Dashboard
+              </Button>
+            )}
           </nav>
         </div>
 
         {/* User Menu */}
-        {user && (
+        {user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -97,6 +110,16 @@ export function Navigation() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        ) : (
+          <Button 
+            variant="ghost" 
+            className="relative h-8 w-8 rounded-full"
+            onClick={() => navigate("/login")}
+          >
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>U</AvatarFallback>
+            </Avatar>
+          </Button>
         )}
       </div>
     </header>
