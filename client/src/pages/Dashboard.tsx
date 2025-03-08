@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import PropertyMap from "@/components/Map";
 import { PropertyCard } from "@/components/PropertyCard";
 import { AIAnalysis } from "@/components/AIAnalysis";
 import { MarketingTools } from "@/components/MarketingTools";
-import { TokenPurchase } from "@/components/TokenPurchase";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [activeDialog, setActiveDialog] = useState<"analysis" | "marketing" | null>(
     null
   );
+  const [, navigate] = useLocation();
 
   const { data: parcels, isLoading: loadingParcels } = useQuery({
     queryKey: ["/api/parcels"],
@@ -68,7 +69,7 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Available Tokens
+                Available Credits
               </CardTitle>
               <CreditCard className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
@@ -169,10 +170,21 @@ export default function Dashboard() {
               </Card>
               <Card className="col-span-3">
                 <CardHeader>
-                  <CardTitle>Token Purchase</CardTitle>
+                  <CardTitle>Current Plan</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <TokenPurchase />
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-medium">Professional Plan</h3>
+                      <p className="text-sm text-muted-foreground">$20/month</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate("/subscription")}
+                    >
+                      Manage Subscription
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -184,7 +196,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {parcels?.map((parcel) => (
+                  {parcels?.map((parcel: Parcel) => (
                     <div key={parcel.id} className="flex items-start space-x-4 border-b pb-4 last:border-0">
                       <div className="flex-1 space-y-1">
                         <p className="text-sm font-medium leading-none">
