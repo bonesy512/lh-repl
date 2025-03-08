@@ -22,6 +22,7 @@ import './App.css';
 function Router() {
   const [user, setUser] = useState(auth.currentUser);
   const [analysisDialogOpen, setAnalysisDialogOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyDetailsResponse | null>(null);
 
   useEffect(() => {
     return auth.onAuthStateChanged((user) => {
@@ -59,6 +60,7 @@ function Router() {
       console.log("Received analysis dialog event");
       const customEvent = event as CustomEvent<{ property: PropertyDetailsResponse }>;
       console.log("Property data:", customEvent.detail.property);
+      setSelectedProperty(customEvent.detail.property);
       setAnalysisDialogOpen(true);
     };
 
@@ -86,7 +88,11 @@ function Router() {
 
       <AnalysisDialog 
         isOpen={analysisDialogOpen} 
-        onClose={() => setAnalysisDialogOpen(false)} 
+        onClose={() => {
+          setAnalysisDialogOpen(false);
+          setSelectedProperty(null);
+        }}
+        property={selectedProperty}
       />
     </>
   );

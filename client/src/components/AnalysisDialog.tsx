@@ -7,12 +7,13 @@ import type { PropertyDetailsResponse, PriceEstimate } from "types";
 interface AnalysisDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  property: PropertyDetailsResponse | null;
 }
 
-export function AnalysisDialog({ isOpen, onClose }: AnalysisDialogProps) {
+export function AnalysisDialog({ isOpen, onClose, property }: AnalysisDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { selectedProperty, removeRunningProperty } = useAppStore();
+  const { removeRunningProperty } = useAppStore();
   const [priceEstimates, setPriceEstimates] = useState<PriceEstimate[]>([]);
   const [prediction, setPrediction] = useState<{
     predicted_price: string;
@@ -22,9 +23,9 @@ export function AnalysisDialog({ isOpen, onClose }: AnalysisDialogProps) {
 
   useEffect(() => {
     async function analyzeProperty() {
-      if (!selectedProperty?.address?.streetAddress) return;
+      if (!property?.address?.streetAddress) return;
 
-      console.log("Starting property analysis in dialog:", selectedProperty);
+      console.log("Starting property analysis in dialog:", property);
       setLoading(true);
       setError(null);
 
@@ -35,9 +36,9 @@ export function AnalysisDialog({ isOpen, onClose }: AnalysisDialogProps) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            address: selectedProperty.address.streetAddress,
-            city: selectedProperty.address.city,
-            state: selectedProperty.address.state
+            address: property.address.streetAddress,
+            city: property.address.city,
+            state: property.address.state
           })
         });
 
@@ -55,7 +56,7 @@ export function AnalysisDialog({ isOpen, onClose }: AnalysisDialogProps) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            address: selectedProperty.address.streetAddress,
+            address: property.address.streetAddress,
             priceComparisons: estimates
           })
         });
@@ -73,16 +74,16 @@ export function AnalysisDialog({ isOpen, onClose }: AnalysisDialogProps) {
         setError(err instanceof Error ? err.message : 'Failed to analyze property');
       } finally {
         setLoading(false);
-        if (selectedProperty.address.streetAddress) {
-          removeRunningProperty(selectedProperty.address.streetAddress);
+        if (property.address.streetAddress) {
+          removeRunningProperty(property.address.streetAddress);
         }
       }
     }
 
-    if (isOpen && selectedProperty) {
+    if (isOpen && property) {
       analyzeProperty();
     }
-  }, [isOpen, selectedProperty]);
+  }, [isOpen, property]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -93,9 +94,9 @@ export function AnalysisDialog({ isOpen, onClose }: AnalysisDialogProps) {
 
         <div className="space-y-6 py-4">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center gap-2 py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Analyzing property...</span>
+              <span>Analyzing property...</span>
             </div>
           ) : error ? (
             <div className="text-destructive">{error}</div>
