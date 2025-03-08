@@ -5,9 +5,31 @@ import Stripe from "stripe";
 import { z } from "zod";
 import { insertUserSchema, insertParcelSchema, insertAnalysisSchema, insertCampaignSchema } from "@shared/schema";
 import { TOKEN_PACKAGES } from "../client/src/lib/stripe";
+import admin from "firebase-admin";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+}
+
+// Initialize Firebase Admin
+console.log('Initializing Firebase Admin...');
+try {
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  if (!process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
+    throw new Error('Missing required Firebase credentials');
+  }
+
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: "landhacker-9a7c1",
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey,
+    }),
+  });
+  console.log('Firebase Admin initialized successfully');
+} catch (error) {
+  console.error('Failed to initialize Firebase Admin:', error);
+  throw error;
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
@@ -15,62 +37,82 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   typescript: true,
 });
 
+// Middleware to verify Firebase token
+async function verifyFirebaseToken(req: any, res: any, next: any) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      req.user = decodedToken;
+      next();
+    } catch (error) {
+      console.error('Firebase token verification failed:', error);
+      return res.status(401).json({ message: "Invalid token" });
+    }
+  } catch (error) {
+    console.error('Error in auth middleware:', error);
+    res.status(401).json({ message: "Unauthorized" });
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth endpoints
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", verifyFirebaseToken, async (req, res) => {
     try {
-      const data = insertUserSchema.parse(req.body);
-      
-      let user = await storage.getUserByFirebaseId(data.firebaseUid);
+      const data = insertUserSchema.parse({
+        username: req.user.name || req.user.email?.split('@')[0] || 'user',
+        email: req.user.email,
+        firebaseUid: req.user.uid,
+      });
+
+      let user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
         user = await storage.createUser(data);
       }
-      
+
       res.json(user);
     } catch (error: any) {
+      console.error('Login error:', error);
       res.status(400).json({ message: error.message });
     }
   });
 
   // User endpoints
-  app.get("/api/user", async (req, res) => {
-    const firebaseUid = req.headers["x-firebase-uid"];
-    if (!firebaseUid) {
-      return res.status(401).json({ message: "Unauthorized" });
+  app.get("/api/user", verifyFirebaseToken, async (req, res) => {
+    try {
+      const user = await storage.getUserByFirebaseId(req.user.uid);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
     }
-
-    const user = await storage.getUserByFirebaseId(firebaseUid as string);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    res.json(user);
   });
 
   // Parcel endpoints
-  app.get("/api/parcels", async (req, res) => {
-    const firebaseUid = req.headers["x-firebase-uid"];
-    if (!firebaseUid) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    const user = await storage.getUserByFirebaseId(firebaseUid as string);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const parcels = await storage.getParcels(user.id);
-    res.json(parcels);
-  });
-
-  app.post("/api/parcels", async (req, res) => {
+  app.get("/api/parcels", verifyFirebaseToken, async (req, res) => {
     try {
-      const firebaseUid = req.headers["x-firebase-uid"];
-      if (!firebaseUid) {
-        return res.status(401).json({ message: "Unauthorized" });
+      const user = await storage.getUserByFirebaseId(req.user.uid);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
-      const user = await storage.getUserByFirebaseId(firebaseUid as string);
+      const parcels = await storage.getParcels(user.id);
+      res.json(parcels);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/parcels", verifyFirebaseToken, async (req, res) => {
+    try {
+      const user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -84,20 +126,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analysis endpoints
-  app.get("/api/analyses/:parcelId", async (req, res) => {
-    const parcelId = parseInt(req.params.parcelId);
-    const analyses = await storage.getAnalysesByParcel(parcelId);
-    res.json(analyses);
+  app.get("/api/analyses/:parcelId", verifyFirebaseToken, async (req, res) => {
+    try {
+      const parcelId = parseInt(req.params.parcelId);
+      const analyses = await storage.getAnalysesByParcel(parcelId);
+      res.json(analyses);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
   });
 
-  app.post("/api/analyses", async (req, res) => {
+  app.post("/api/analyses", verifyFirebaseToken, async (req, res) => {
     try {
-      const firebaseUid = req.headers["x-firebase-uid"];
-      if (!firebaseUid) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const user = await storage.getUserByFirebaseId(firebaseUid as string);
+      const user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -122,29 +163,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Campaign endpoints
-  app.get("/api/campaigns", async (req, res) => {
-    const firebaseUid = req.headers["x-firebase-uid"];
-    if (!firebaseUid) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    const user = await storage.getUserByFirebaseId(firebaseUid as string);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const campaigns = await storage.getCampaigns(user.id);
-    res.json(campaigns);
-  });
-
-  app.post("/api/campaigns", async (req, res) => {
+  app.get("/api/campaigns", verifyFirebaseToken, async (req, res) => {
     try {
-      const firebaseUid = req.headers["x-firebase-uid"];
-      if (!firebaseUid) {
-        return res.status(401).json({ message: "Unauthorized" });
+      const user = await storage.getUserByFirebaseId(req.user.uid);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
-      const user = await storage.getUserByFirebaseId(firebaseUid as string);
+      const campaigns = await storage.getCampaigns(user.id);
+      res.json(campaigns);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/campaigns", verifyFirebaseToken, async (req, res) => {
+    try {
+      const user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -184,7 +219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe webhook
   app.post("/api/webhook", async (req, res) => {
     const sig = req.headers["stripe-signature"];
-    
+
     try {
       const event = stripe.webhooks.constructEvent(
         req.body,
