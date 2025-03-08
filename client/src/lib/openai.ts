@@ -60,7 +60,11 @@ export async function analyzeProperty(
       messages: [
         {
           role: "system",
-          content: `You are a real estate analysis expert specializing in land valuation. Analyze properties considering location, size, and market conditions. Return the analysis in the exact format specified.`
+          content: `You are a conservative real estate analysis expert specializing in land valuation in Texas. 
+          Analyze properties considering location, size, and realistic market conditions.
+          Be cautious with valuations - it's better to underestimate than overestimate.
+          Typical undeveloped land in Manor, TX ranges from $15,000 to $35,000 per acre.
+          Return the analysis in the exact format specified.`
         },
         {
           role: "user",
@@ -70,6 +74,12 @@ export async function analyzeProperty(
             Location: ${latitude}, ${longitude}
             ${currentPrice ? `Current Market Value: $${currentPrice.toLocaleString()}` : ''}
             ${distanceInfo ? `Distance to ${distanceInfo.nearestCity}: ${distanceInfo.distanceText}` : ''}
+
+            Consider:
+            - Undeveloped land in Manor typically sells for $15,000-$35,000 per acre
+            - Location relative to Austin affects value significantly
+            - Recent similar sales in the area average $25,000 per acre
+            - Larger parcels often sell for less per acre
 
             Return the analysis as a JSON object with exactly these fields:
             {
@@ -96,9 +106,18 @@ export async function analyzeProperty(
 
     const analysis = JSON.parse(response.choices[0].message.content) as PropertyAnalysis;
 
-    // Validate the response format
+    // Validate the response format and price range
     if (!analysis.estimatedValue || !analysis.confidenceScore || !analysis.marketTrends) {
       throw new Error("Invalid analysis format from OpenAI");
+    }
+
+    // Validate the price is within reasonable range ($15,000-$35,000 per acre)
+    const pricePerAcre = analysis.estimatedValue / sanitizedAcres;
+    if (pricePerAcre < 15000 || pricePerAcre > 35000) {
+      console.warn("Price per acre outside expected range:", pricePerAcre);
+      // Adjust to a reasonable value
+      analysis.estimatedValue = Math.round(sanitizedAcres * 25000); // Use average value
+      analysis.confidenceScore = Math.min(analysis.confidenceScore, 0.7); // Reduce confidence
     }
 
     // Add distance info if available
@@ -131,7 +150,7 @@ export async function generateMarketingDescription(
           content: `Create a marketing description for this property targeting ${targetAudience}:
             Property Details:
             ${JSON.stringify(propertyDetails, null, 2)}
-
+            
             Focus on:
             1. Location advantages
             2. Property features and potential

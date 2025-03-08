@@ -163,7 +163,9 @@ export class DatabaseStorage implements IStorage {
           sql`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) >= ${acres * 0.5}`,
           sql`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) <= ${acres * 2}`,
           // Must have either market value or price
-          sql`COALESCE((${parcels.details}::jsonb->>'marketValue')::numeric, ${parcels.price}) IS NOT NULL`
+          sql`COALESCE((${parcels.details}::jsonb->>'marketValue')::numeric, ${parcels.price}) IS NOT NULL`,
+          // Filter out unreasonable prices (between $15,000 and $35,000 per acre)
+          sql`COALESCE((${parcels.details}::jsonb->>'marketValue')::numeric, ${parcels.price}) / COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) BETWEEN 15000 AND 35000`
         )
       )
       .orderBy(sql`ABS(COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) - ${acres})`) // Order by closest acre size
