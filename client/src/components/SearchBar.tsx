@@ -3,6 +3,7 @@ import { useAppStore } from "@/utils/store";
 import { useState, useEffect, useRef } from "react";
 import type { MapRef } from 'react-map-gl';
 import { Loader2 } from 'lucide-react';
+import type { PropertyDetailsResponse, Address } from 'types';
 
 interface Coordinates {
   latitude: number;
@@ -53,7 +54,7 @@ export function SearchBar({ onSearch, mapRef }: Props) {
     setShouldCenterMap, 
     setPropertyCardVisible 
   } = useAppStore();
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<PropertyDetailsResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const searchTimeout = useRef<NodeJS.Timeout>();
@@ -151,16 +152,19 @@ export function SearchBar({ onSearch, mapRef }: Props) {
         const stateContext = feature.context?.find(ctx => ctx.id.startsWith('region.'));
         const zipcodeContext = feature.context?.find(ctx => ctx.id.startsWith('postcode.'));
 
-        const result = {
+        const address: Address = {
+          streetAddress: feature.place_name || feature.text,
+          city: cityContext?.text || '',
+          state: stateContext?.text || '',
+          zipcode: zipcodeContext?.text || ''
+        };
+
+        const property: PropertyDetailsResponse = {
           propertyId: `mb_${Date.now()}_${index}`,
-          address: {
-            streetAddress: feature.place_name || feature.text,
-            city: cityContext?.text || '',
-            state: stateContext?.text || '',
-            zipcode: zipcodeContext?.text || ''
-          },
+          address,
           latitude: feature.center[1],
-          longitude: feature.center[0]
+          longitude: feature.center[0],
+          zpid: 0 // Required by type but not used for search results
         };
 
         try {
@@ -168,21 +172,21 @@ export function SearchBar({ onSearch, mapRef }: Props) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              origins: `${result.latitude},${result.longitude}`,
-              destination: result.address.city || 'nearest city'
+              origins: `${property.latitude},${property.longitude}`,
+              destination: address.city || 'nearest city'
             })
           });
 
           if (distanceResponse.ok) {
             const distanceData = await distanceResponse.json();
-            result.distanceToCity = distanceData.distance_text;
-            result.durationToCity = distanceData.duration_text;
+            property.distanceToCity = distanceData.distance_text;
+            property.timeToCity = distanceData.duration_text;
           }
         } catch (error) {
           console.error('Error fetching distance:', error);
         }
 
-        return result;
+        return property;
       }));
 
       setSearchResults(transformedResults);
@@ -219,10 +223,10 @@ export function SearchBar({ onSearch, mapRef }: Props) {
               ) : 'No results found.'}
             </CommandEmpty>
             <CommandGroup>
-              {searchResults.map((result, idx) => (
+              {searchResults.map((result) => (
                 <CommandItem
                   key={result.propertyId}
-                  value={result.propertyId.toString()}
+                  value={result.propertyId}
                   onSelect={() => {
                     setFocused(false);
                     setIsLoadingProperty(true);
@@ -243,7 +247,7 @@ export function SearchBar({ onSearch, mapRef }: Props) {
                     </div>
                     {result.distanceToCity && (
                       <div className="text-sm text-muted-foreground">
-                        {result.distanceToCity} ({result.durationToCity}) to {result.address.city}
+                        {result.distanceToCity} ({result.timeToCity}) to {result.address.city}
                       </div>
                     )}
                   </div>
