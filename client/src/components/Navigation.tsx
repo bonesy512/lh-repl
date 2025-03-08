@@ -99,7 +99,7 @@ export function Navigation() {
                   <CreditCard className="mr-2 h-4 w-4" />
                   <span>Subscription Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/dashboard?tab=billing")}>
+                <DropdownMenuItem onClick={() => navigate("/purchase-tokens")}>
                   <CreditCard className="mr-2 h-4 w-4" />
                   <span>Purchase Tokens</span>
                 </DropdownMenuItem>
