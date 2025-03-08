@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "@/utils/store";
 import { Loader2 } from "lucide-react";
 import type { PropertyDetailsResponse, PriceEstimate } from "types";
+import { getCachedAnalysis, cacheAnalysis } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+import { toast } from "sonner";
 
 interface AnalysisDialogProps {
   isOpen: boolean;
@@ -23,18 +26,33 @@ export function AnalysisDialog({ isOpen, onClose, property }: AnalysisDialogProp
 
   useEffect(() => {
     async function analyzeProperty() {
-      if (!property?.address?.streetAddress) return;
+      if (!property?.address?.streetAddress || !property.id) {
+        console.error("Invalid property data:", property);
+        return;
+      }
 
       console.log("Starting property analysis in dialog:", property);
       setLoading(true);
       setError(null);
 
       try {
+        // Check cached analysis first
+        const cachedAnalysis = await getCachedAnalysis(property.id);
+        if (cachedAnalysis && cachedAnalysis.expiresAt > Date.now()) {
+          console.log("Using cached analysis:", cachedAnalysis);
+          setPriceEstimates(cachedAnalysis.priceEstimates);
+          setPrediction(cachedAnalysis.prediction);
+          return;
+        }
+
         // Get price estimates
         console.log("Fetching price estimates...");
         const estimatesResponse = await fetch('/api/scrape/estimates', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`
+          },
           body: JSON.stringify({
             address: property.address.streetAddress,
             city: property.address.city,
@@ -54,7 +72,10 @@ export function AnalysisDialog({ isOpen, onClose, property }: AnalysisDialogProp
         console.log("Requesting price prediction...");
         const predictionResponse = await fetch('/api/scrape/predict-price', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`
+          },
           body: JSON.stringify({
             address: property.address.streetAddress,
             priceComparisons: estimates
@@ -69,9 +90,19 @@ export function AnalysisDialog({ isOpen, onClose, property }: AnalysisDialogProp
         console.log("Received price prediction:", predictionResult);
         setPrediction(predictionResult);
 
+        // Cache the analysis results
+        await cacheAnalysis(property.id, {
+          priceEstimates: estimates,
+          prediction: predictionResult
+        });
+
       } catch (err) {
         console.error("Analysis error:", err);
-        setError(err instanceof Error ? err.message : 'Failed to analyze property');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to analyze property';
+        setError(errorMessage);
+        toast.error("Analysis failed", {
+          description: errorMessage
+        });
       } finally {
         setLoading(false);
         if (property.address.streetAddress) {
