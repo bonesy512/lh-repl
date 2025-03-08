@@ -17,6 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { type Parcel } from "@shared/schema";
 import { auth } from "@/lib/firebase";
 import { useLocation } from "wouter";
+import { CreditCard, Users, Activity, Map } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Dashboard() {
   const [, navigate] = useLocation();
@@ -32,7 +34,10 @@ export default function Dashboard() {
 
   const { data: user } = useQuery({
     queryKey: ["/api/user"],
-    queryFn: undefined,
+  });
+
+  const { data: invoices } = useQuery({
+    queryKey: ["/api/invoices"],
   });
 
   function handleParcelSelect(parcel: Parcel) {
@@ -81,11 +86,67 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 space-y-8">
+        {/* Overview Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Available Tokens
+              </CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{user?.credits || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                Used for AI analysis and marketing
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Team Members</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">1</div>
+              <p className="text-xs text-muted-foreground">
+                Add members for $10/month each
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Properties Analyzed
+              </CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{parcels?.length || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                Total properties analyzed
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Subscription</CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Professional</div>
+              <p className="text-xs text-muted-foreground">
+                $20/month • Renews Mar 28
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
         <Tabs defaultValue="map">
           <TabsList>
             <TabsTrigger value="map">Map View</TabsTrigger>
-            <TabsTrigger value="tokens">Purchase Tokens</TabsTrigger>
+            <TabsTrigger value="billing">Billing & Usage</TabsTrigger>
           </TabsList>
 
           <TabsContent value="map" className="space-y-8">
@@ -104,12 +165,45 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="tokens">
-            <TokenPurchase />
+          <TabsContent value="billing" className="space-y-8">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+              <Card className="col-span-4">
+                <CardHeader>
+                  <CardTitle>Invoice History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-8">
+                    {invoices?.map((invoice: any) => (
+                      <div key={invoice.id} className="flex items-center">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium leading-none">
+                            {invoice.description}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(invoice.date).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="ml-auto font-medium">
+                          ${invoice.amount}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="col-span-3">
+                <CardHeader>
+                  <CardTitle>Token Purchase</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TokenPurchase />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
 
-        {/* Analysis Dialog */}
+        {/* Dialogs */}
         <Dialog
           open={activeDialog === "analysis"}
           onOpenChange={() => setActiveDialog(null)}
@@ -127,7 +221,6 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
-        {/* Marketing Dialog */}
         <Dialog
           open={activeDialog === "marketing"}
           onOpenChange={() => setActiveDialog(null)}
