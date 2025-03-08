@@ -1,40 +1,18 @@
 import { Button } from "@/components/ui/button";
+import { RulerIcon } from "lucide-react";
 import { useAppStore } from "@/utils/store";
-import { RulerIcon, Maximize2, X } from "lucide-react";
 
 export function MeasurementControls() {
-  const { measurementMode, setMeasurementMode, clearMeasurements } = useAppStore();
+  const { measurementMode, setMeasurementMode } = useAppStore();
 
   return (
-    <div className="flex flex-col gap-2">
-      <Button
-        size="icon"
-        variant={measurementMode === 'distance' ? 'default' : 'outline'}
-        onClick={() => setMeasurementMode(measurementMode === 'distance' ? 'none' : 'distance')}
-        title="Measure Distance"
-      >
-        <RulerIcon className="h-4 w-4" />
-      </Button>
-      
-      <Button
-        size="icon"
-        variant={measurementMode === 'area' ? 'default' : 'outline'}
-        onClick={() => setMeasurementMode(measurementMode === 'area' ? 'none' : 'area')}
-        title="Measure Area"
-      >
-        <Maximize2 className="h-4 w-4" />
-      </Button>
-
-      {measurementMode !== 'none' && (
-        <Button
-          size="icon"
-          variant="outline"
-          onClick={clearMeasurements}
-          title="Clear Measurements"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      )}
-    </div>
+    <Button
+      variant="secondary"
+      size="icon"
+      className="mapboxgl-ctrl-group mapboxgl-ctrl h-[29px] w-[29px] !p-0 z-[2] bg-white text-black hover:bg-gray-100 hover:text-black border border-gray-200 dark:bg-white dark:text-black dark:hover:bg-gray-100 dark:border-gray-200 dark:hover:text-black"
+      onClick={() => setMeasurementMode(measurementMode === 'none' ? 'distance' : 'none')}
+    >
+      <RulerIcon className="h-4 w-4" />
+    </Button>
   );
 }
