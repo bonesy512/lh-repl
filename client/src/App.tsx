@@ -13,6 +13,7 @@ import TeamMembers from "@/pages/TeamMembers";
 import Login from "@/pages/Login";
 import BetaLanding from "@/pages/BetaLanding";
 import NotFound from "@/pages/not-found";
+import Subscription from "@/pages/Subscription"; // Added import
 import './App.css';
 
 function Router() {
@@ -63,6 +64,7 @@ function Router() {
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/team" component={TeamMembers} />
         <Route path="/beta" component={BetaLanding} />
+        <Route path="/subscription" component={Subscription} /> {/* Added route */}
         <Route component={NotFound} />
       </Switch>
     </>

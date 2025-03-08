@@ -95,9 +95,9 @@ export function Navigation() {
                   <Users className="mr-2 h-4 w-4" />
                   <span>Team Members</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/dashboard?tab=billing")}>
+                <DropdownMenuItem onClick={() => navigate("/subscription")}>
                   <CreditCard className="mr-2 h-4 w-4" />
-                  <span>Subscription</span>
+                  <span>Subscription Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/dashboard?tab=billing")}>
                   <CreditCard className="mr-2 h-4 w-4" />
