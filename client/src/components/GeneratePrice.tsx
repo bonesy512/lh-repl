@@ -1,19 +1,20 @@
-import { useState, useEffect } from "react";
-import ReactMarkdown from "react-markdown";
+import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CoinsIcon, Loader2, Check, DollarSign, AlertTriangle } from "lucide-react";
+import { CoinsIcon, Loader2, Check, DollarSign, AlertTriangle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { type PropertyAnalysis } from "@shared/schema";
-import { useQuery } from "@tanstack/react-query";
-import { analyzeProperty } from "@/lib/openai";
-import { apiRequest } from "@/lib/queryClient";
+import { type PropertyAnalysis } from '@shared/schema';
+import { useQuery } from '@tanstack/react-query';
+import { analyzeProperty } from '@/lib/openai';
+import { apiRequest } from '@/lib/queryClient';
+import { toast } from 'sonner';
 
 interface GeneratePriceProps {
-  selectedProperty: any; // We'll type this properly once we see the full property structure
+  selectedProperty: any; 
   onAnalysisComplete?: (analysis: PropertyAnalysis) => void;
 }
 
@@ -56,7 +57,7 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
 
   if (!selectedProperty?.address) return null;
 
-  const handleGenerate = async () => {
+  async function handleGenerate() {
     setIsGenerating(true);
     setShowAnalysis(true);
 
@@ -65,20 +66,33 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
       setIsFetchingAcrePrices(true);
       const acrePricesResponse = await apiRequest("POST", "/api/acres-prices", {
         city: selectedProperty.address.city,
-        acres: selectedProperty.gisArea || 10,
+        state: selectedProperty.address.state,
+        acres: selectedProperty.gisArea || selectedProperty.acres || 10,
         zip_code: selectedProperty.address.zipcode,
+        radius: 50 
       });
-      const acrePricesData = await acrePricesResponse.json();
-      setAcrePrices(acrePricesData.prices);
 
-      // Generate AI analysis
+      if (!acrePricesResponse.ok) {
+        throw new Error(`Failed to fetch comparable properties: ${await acrePricesResponse.text()}`);
+      }
+
+      const acrePricesData = await acrePricesResponse.json();
+      if (!acrePricesData.prices || acrePricesData.prices.length === 0) {
+        toast({
+          title: "No Comparable Properties",
+          description: "We couldn't find similar properties in the area. The AI analysis will continue with estimated values.",
+        });
+      }
+      setAcrePrices(acrePricesData.prices || []);
+
+      // Generate AI analysis using correct property values
       setIsPredicting(true);
       const analysis = await analyzeProperty(
         `${selectedProperty.address.streetAddress}, ${selectedProperty.address.city}, ${selectedProperty.address.state} ${selectedProperty.address.zipcode}`,
-        selectedProperty.gisArea || 10,
+        selectedProperty.gisArea || selectedProperty.acres || 10,
         selectedProperty.latitude,
         selectedProperty.longitude,
-        selectedProperty.price
+        selectedProperty.marketValue || selectedProperty.price
       );
 
       setPredictedPrice({
@@ -91,18 +105,22 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
       await apiRequest("POST", "/api/analyses", {
         parcelId: selectedProperty.id,
         analysis,
-        creditsUsed: 50, // Cost 50 tokens for analysis
+        creditsUsed: 50, 
       });
 
       onAnalysisComplete?.(analysis);
     } catch (error: any) {
       console.error("Error generating price:", error);
+      toast({
+        title: "Analysis Failed",
+        description: error.message,
+      });
     } finally {
       setIsFetchingAcrePrices(false);
       setIsPredicting(false);
       setIsGenerating(false);
     }
-  };
+  }
 
   return (
     <div className="space-y-8 w-full max-w-[100%] overflow-hidden">

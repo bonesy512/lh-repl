@@ -126,36 +126,50 @@ export class DatabaseStorage implements IStorage {
     maxAcres: number;
     zipCode: string;
   }): Promise<any[]> {
+    console.log("Searching for similar properties with params:", {
+      city,
+      acres,
+      maxAcres,
+      zipCode
+    });
+
     const query = await db
       .select({
         id: parcels.id,
         address: parcels.address,
         price: parcels.price,
         acres: parcels.acres,
+        gisArea: sql<number>`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres})`,
+        marketValue: sql<number>`COALESCE((${parcels.details}::jsonb->>'marketValue')::numeric, ${parcels.price})`
       })
       .from(parcels)
       .where(
         and(
           // Match city (case insensitive)
-          sql`LOWER(${parcels.address}->>'city') = ${city.toLowerCase()}`,
-          // Match zip code
-          sql`${parcels.address}->>'zipcode' = ${zipCode}`,
-          // Acres within range
-          gte(parcels.acres, acres),
-          lte(parcels.acres, maxAcres),
-          // Must have a price
-          isNotNull(parcels.price)
+          sql`LOWER(${parcels.address}::jsonb->>'city') = ${city.toLowerCase()}`,
+          // Match zip code (with some flexibility for nearby areas)
+          sql`${parcels.address}::jsonb->>'zipcode' LIKE ${zipCode.substring(0, 3) + '%'}`,
+          // Acres within range (allow some flexibility)
+          sql`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) > ${acres * 0.5}`,
+          sql`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) < ${acres * 2}`,
+          // Must have either market value or price
+          sql`COALESCE((${parcels.details}::jsonb->>'marketValue')::numeric, ${parcels.price}) IS NOT NULL`
         )
       )
-      .limit(10) // Limit to prevent too many results
-      .orderBy(desc(parcels.createdAt));
+      .orderBy(sql`ABS(COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) - ${acres})`) // Order by closest acre size
+      .limit(10);
 
-    return query.map(property => ({
-      address: property.address,
-      price: property.price,
-      acre: property.acres,
-      pricePerAcre: property.price / property.acres
+    console.log("Raw query results:", query);
+
+    const results = query.map(property => ({
+      address: typeof property.address === 'string' ? JSON.parse(property.address) : property.address,
+      price: property.marketValue || property.price,
+      acre: property.gisArea || property.acres,
+      pricePerAcre: (property.marketValue || property.price) / (property.gisArea || property.acres)
     }));
+
+    console.log(`Found ${results.length} similar properties:`, results);
+    return results;
   }
 }
 
