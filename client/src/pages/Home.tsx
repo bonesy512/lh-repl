@@ -1,189 +1,159 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { Map, Brain, BarChart3, Check } from "lucide-react";
-
-const betaSignupSchema = z.object({
-  fullName: z.string().min(2, "Full name is required"),
-  email: z.string().email("Please enter a valid email"),
-  phone: z.string().min(10, "Please enter a valid phone number"),
-});
-
-type BetaSignupForm = z.infer<typeof betaSignupSchema>;
+import { useLocation } from "wouter";
+import { Check } from "lucide-react";
 
 export default function Home() {
-  const { toast } = useToast();
-  const form = useForm<BetaSignupForm>({
-    resolver: zodResolver(betaSignupSchema),
-  });
-
-  async function onSubmit(data: BetaSignupForm) {
-    try {
-      // TODO: Implement beta signup API
-      console.log("Beta signup:", data);
-      toast({
-        title: "Success!",
-        description: "Thanks for signing up for beta access. We'll be in touch soon!",
-      });
-      form.reset();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }
+  const [, navigate] = useLocation();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted">
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-24 text-center">
         <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          Revolutionizing Texas Land Real Estate
+          Landhacker
+          AI-Powered Land Investment
         </h1>
         <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-          AI-powered land valuation and analysis platform designed specifically for
-          Texas real estate professionals. Get early access to transform your land
-          investment strategy.
+          Discover, analyze, and invest in land opportunities with confidence
+          using advanced AI technology and market insights.
         </p>
+        <Button
+          size="lg"
+          className="text-lg"
+          onClick={() => navigate("/login")}
+        >
+          Start Free Trial
+        </Button>
+      </section>
 
-        {/* Beta Signup Form */}
-        <div className="max-w-md mx-auto bg-card p-6 rounded-lg shadow-lg border">
-          <h2 className="text-2xl font-bold mb-4">Get Beta Access</h2>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="fullName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John Smith" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="john@example.com" type="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="(555) 123-4567" type="tel" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full">
-                Join the Waitlist
-              </Button>
-            </form>
-          </Form>
+      {/* Pricing Section */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">
+            Simple, Transparent Pricing
+          </h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Get started with our professional plan and scale your team as
+            needed.
+          </p>
+        </div>
+
+        <div className="max-w-md mx-auto">
+          <div className="rounded-lg border bg-card p-8">
+            <h3 className="text-2xl font-bold text-center mb-2">
+              Professional
+            </h3>
+            <div className="text-center mb-6">
+              <span className="text-4xl font-bold">$20</span>
+              <span className="text-muted-foreground">/month</span>
+            </div>
+
+            <ul className="space-y-4 mb-8">
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-primary mr-2" />
+                <span>Unlimited Property Analysis</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-primary mr-2" />
+                <span>AI-Powered Comp Generation</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-primary mr-2" />
+                <span>Marketing Campaign Tools</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-primary mr-2" />
+                <span>Add Team Members ($10/month each)</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-primary mr-2" />
+                <span>Purchase Additional Tokens as Needed</span>
+              </li>
+            </ul>
+
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={() => navigate("/login")}
+            >
+              Get Started
+            </Button>
+          </div>
         </div>
       </section>
 
       {/* Features Grid */}
       <section className="container mx-auto px-4 py-16">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid md:grid-cols-3 gap-8">
           <div className="p-6 rounded-lg bg-card">
             <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Map className="h-6 w-6 text-primary" />
+              <svg
+                className="h-6 w-6 text-primary"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                />
+              </svg>
             </div>
-            <h3 className="text-xl font-semibold mb-2">Texas-Focused Analysis</h3>
+            <h3 className="text-xl font-semibold mb-2">Interactive Maps</h3>
             <p className="text-muted-foreground">
-              Specialized insights and valuations for Texas land properties, leveraging
-              local market data and trends.
+              Explore properties with our interactive mapping interface
+              featuring detailed parcel information.
             </p>
           </div>
 
           <div className="p-6 rounded-lg bg-card">
             <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Brain className="h-6 w-6 text-primary" />
+              <svg
+                className="h-6 w-6 text-primary"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
             </div>
-            <h3 className="text-xl font-semibold mb-2">AI-Powered Insights</h3>
+            <h3 className="text-xl font-semibold mb-2">AI Analysis</h3>
             <p className="text-muted-foreground">
-              Advanced AI technology analyzes property potential, market trends, and
-              investment opportunities.
+              Get instant property valuations and insights powered by advanced
+              AI technology.
             </p>
           </div>
 
           <div className="p-6 rounded-lg bg-card">
             <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <BarChart3 className="h-6 w-6 text-primary" />
+              <svg
+                className="h-6 w-6 text-primary"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
+                />
+              </svg>
             </div>
-            <h3 className="text-xl font-semibold mb-2">Market Intelligence</h3>
+            <h3 className="text-xl font-semibold mb-2">Marketing Tools</h3>
             <p className="text-muted-foreground">
-              Real-time data and analytics to help you make informed investment
-              decisions in the Texas land market.
+              Create targeted marketing campaigns with AI-generated content and
+              analytics.
             </p>
           </div>
         </div>
-      </section>
-
-      {/* Early Access Benefits */}
-      <section className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center mb-12">
-          Beta Access Benefits
-        </h2>
-        <div className="max-w-2xl mx-auto space-y-4">
-          <div className="flex items-start">
-            <Check className="h-5 w-5 text-primary mr-2 mt-1" />
-            <p>Early adopter pricing locked in for life</p>
-          </div>
-          <div className="flex items-start">
-            <Check className="h-5 w-5 text-primary mr-2 mt-1" />
-            <p>Priority access to new features and updates</p>
-          </div>
-          <div className="flex items-start">
-            <Check className="h-5 w-5 text-primary mr-2 mt-1" />
-            <p>Direct influence on product development</p>
-          </div>
-          <div className="flex items-start">
-            <Check className="h-5 w-5 text-primary mr-2 mt-1" />
-            <p>Exclusive Texas land market insights and reports</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Texas Market Focus */}
-      <section className="container mx-auto px-4 py-16 text-center">
-        <h2 className="text-3xl font-bold mb-6">
-          Built for Texas Land Professionals
-        </h2>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Whether you're a realtor, investor, or developer, Landhacker provides the
-          tools you need to succeed in the Texas land market. Join our beta program
-          to get ahead of the competition.
-        </p>
       </section>
     </div>
   );
