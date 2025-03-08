@@ -1,16 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { SavedQuery, UserProfile } from './firebase';
 
 type Measurement = {
   id: string;
   type: 'distance' | 'area';
   value?: number;
   coordinates: number[][];
-};
-
-type UserProfile = {
-  subscriptionTier?: 'monthly' | 'yearly';
-  subscriptionStatus?: 'active' | 'cancelled_active' | 'cancelled' | 'none';
 };
 
 type MapState = {
@@ -41,6 +37,8 @@ type MapState = {
   setPropertyCardVisible: (visible: boolean) => void;
   userProfile: UserProfile | null;
   setUserProfile: (profile: UserProfile | null) => void;
+  savedProperties: SavedQuery[] | null;
+  setSavedProperties: (properties: SavedQuery[] | null) => void;
 };
 
 export const useAppStore = create<MapState>()(
@@ -103,6 +101,10 @@ export const useAppStore = create<MapState>()(
       // User profile
       userProfile: null,
       setUserProfile: (profile) => set({ userProfile: profile }),
+
+      // Saved properties
+      savedProperties: null,
+      setSavedProperties: (properties) => set({ savedProperties: properties }),
     }),
     {
       name: 'map-storage',
