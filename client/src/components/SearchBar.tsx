@@ -2,6 +2,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useAppStore } from "@/utils/store";
 import { useState, useEffect, useRef } from "react";
 import type { MapRef } from 'react-map-gl';
+import { Loader2 } from 'lucide-react';
 
 interface Coordinates {
   latitude: number;
@@ -46,10 +47,14 @@ export interface Props {
 
 export function SearchBar({ onSearch, mapRef }: Props) {
   const [focused, setFocused] = useState(false);
-  const { setSelectedProperty, setIsLoadingProperty, setShouldCenterMap, setPropertyCardVisible } = useAppStore();
+  const { 
+    setSelectedProperty, 
+    setIsLoadingProperty, 
+    setShouldCenterMap, 
+    setPropertyCardVisible 
+  } = useAppStore();
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-
   const [query, setQuery] = useState("");
   const searchTimeout = useRef<NodeJS.Timeout>();
 
@@ -57,10 +62,6 @@ export function SearchBar({ onSearch, mapRef }: Props) {
     if (!query || query.length < 2) {
       setSearchResults([]);
       return;
-    }
-
-    if (query.length >= 2) {
-      setLoading(true);
     }
 
     if (searchTimeout.current) {
@@ -110,9 +111,9 @@ export function SearchBar({ onSearch, mapRef }: Props) {
 
     setLoading(true);
     try {
-      // Handle coordinates input
       const coords = isCoordinates(query);
       let url;
+
       if (coords) {
         url = buildMapboxUrl(
           `https://api.mapbox.com/geocoding/v5/mapbox.places/${coords.longitude},${coords.latitude}.json`,
@@ -139,46 +140,46 @@ export function SearchBar({ onSearch, mapRef }: Props) {
       }
 
       const data: GeocodingResponse = await response.json();
-
       if (!data?.features?.length) {
         setSearchResults([]);
         return;
       }
 
-      // Transform Mapbox results to match our app's format
+      // Process results and get distances
       const transformedResults = await Promise.all(data.features.map(async (feature, index) => {
+        const cityContext = feature.context?.find(ctx => ctx.id.startsWith('place.'));
+        const stateContext = feature.context?.find(ctx => ctx.id.startsWith('region.'));
+        const zipcodeContext = feature.context?.find(ctx => ctx.id.startsWith('postcode.'));
+
         const result = {
-          zpid: `mb_${Date.now()}_${index}`,
-          streetAddress: feature.place_name || feature.text,
-          city: feature.context?.find(ctx => ctx.id.startsWith('place.'))?.text || '',
-          state: feature.context?.find(ctx => ctx.id.startsWith('region.'))?.text || '',
-          zipcode: feature.context?.find(ctx => ctx.id.startsWith('postcode.'))?.text || '',
+          propertyId: `mb_${Date.now()}_${index}`,
+          address: {
+            streetAddress: feature.place_name || feature.text,
+            city: cityContext?.text || '',
+            state: stateContext?.text || '',
+            zipcode: zipcodeContext?.text || ''
+          },
           latitude: feature.center[1],
           longitude: feature.center[0]
         };
 
-        // Get distance to nearest city if coordinates are available
-        if (result.latitude && result.longitude) {
-          try {
-            const distanceResponse = await fetch('/api/distance-to-city', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                origins: `${result.latitude},${result.longitude}`,
-                destination: result.city || 'nearest city'
-              })
-            });
+        try {
+          const distanceResponse = await fetch('/api/distance-to-city', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              origins: `${result.latitude},${result.longitude}`,
+              destination: result.address.city || 'nearest city'
+            })
+          });
 
-            if (distanceResponse.ok) {
-              const distanceData = await distanceResponse.json();
-              result.distanceToCity = distanceData.distance_text;
-              result.durationToCity = distanceData.duration_text;
-            }
-          } catch (error) {
-            console.error('Error fetching distance:', error);
+          if (distanceResponse.ok) {
+            const distanceData = await distanceResponse.json();
+            result.distanceToCity = distanceData.distance_text;
+            result.durationToCity = distanceData.duration_text;
           }
+        } catch (error) {
+          console.error('Error fetching distance:', error);
         }
 
         return result;
@@ -200,89 +201,57 @@ export function SearchBar({ onSearch, mapRef }: Props) {
           placeholder="Search by address"
           value={query}
           onValueChange={setQuery}
-          disabled={false}
+          disabled={loading}
           className="h-10 bg-background/90 backdrop-blur-sm w-full text-base"
           onFocus={() => setFocused(true)}
           onBlur={() => {
             setTimeout(() => setFocused(false), 200);
           }}
         />
-        {focused && <CommandList className="max-h-[200px] overflow-y-auto">
-          <CommandEmpty>{loading ? 'Searching...' : 'No results found.'}</CommandEmpty>
-          <CommandGroup>
-            {loading ? (
-              <CommandItem value="loading" disabled>
-                Searching...
-              </CommandItem>
-            ) : (searchResults?.length > 0 ? searchResults : []).map((result, idx) => (
-              <CommandItem
-                key={idx}
-                value={result.zpid.toString()}
-                onSelect={() => {
-                  setFocused(false);
-                  setIsLoadingProperty(true);
-
-                  const address = {
-                    streetAddress: result.streetAddress,
-                    city: result.city,
-                    state: result.state,
-                    zipcode: result.zipcode
-                  };
-
-                  setShouldCenterMap(true);
-                  setSelectedProperty({
-                    ...result,
-                    address,
-                    distanceToCity: result.distanceToCity,
-                    durationToCity: result.durationToCity
-                  });
-                  setPropertyCardVisible(true);
-
-                  // Query map layers for additional data if map is available
-                  if (mapRef?.current) {
-                    const center = mapRef.current.project([result.longitude, result.latitude]);
-                    const features = mapRef.current.queryRenderedFeatures(center, {
-                      layers: ['layer']
-                    });
-                    if (features.length > 0) {
-                      const feature = features[0];
-                      const properties = feature.properties || {};
-
-                      setSelectedProperty(prev => ({
-                        ...prev,
-                        propertyId: properties?.Prop_ID,
-                        ownerName: properties?.NAME_CARE ? `${properties.OWNER_NAME} ${properties.NAME_CARE}` : properties?.OWNER_NAME,
-                        legalAreaUnits: properties?.LGL_AREA_U,
-                        gisArea: properties?.GIS_AREA ? parseFloat(properties.GIS_AREA) : undefined,
-                        gisAreaUnits: properties?.GIS_AREA_U,
-                        landValue: properties?.LAND_VALUE ? parseInt(properties.LAND_VALUE) : undefined,
-                        improvementValue: properties?.IMP_VALUE ? parseInt(properties.IMP_VALUE) : undefined,
-                        marketValue: properties?.MKT_VALUE ? parseInt(properties.MKT_VALUE) : undefined,
-                        dateAcquired: properties?.DATE_ACQ ? parseInt(properties.DATE_ACQ) : undefined,
-                        fipsCode: properties?.FIPS,
-                        county: properties?.COUNTY,
-                        taxYear: properties?.TAX_YEAR ? parseInt(properties.TAX_YEAR) : undefined
-                      }));
-                    }
-                  }
-                  setIsLoadingProperty(false);
-                }}
-              >
-                <div className="flex flex-col gap-1">
-                  <div className="font-medium text-base">{result.streetAddress}</div>
-                  <div className="text-base text-muted-foreground">
-                    {[result.city, result.state, result.zipcode].filter(Boolean).join(', ')}
-                  </div>
-                  {result.distanceToCity && (
-                    <div className="text-sm text-muted-foreground">
-                      {result.distanceToCity} ({result.durationToCity}) to {result.city}
-                    </div>
-                  )}
+        {focused && (
+          <CommandList className="max-h-[300px] overflow-y-auto">
+            <CommandEmpty>
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Searching...
                 </div>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </CommandList>}
+              ) : 'No results found.'}
+            </CommandEmpty>
+            <CommandGroup>
+              {searchResults.map((result, idx) => (
+                <CommandItem
+                  key={result.propertyId}
+                  value={result.propertyId.toString()}
+                  onSelect={() => {
+                    setFocused(false);
+                    setIsLoadingProperty(true);
+                    setShouldCenterMap(true);
+                    setSelectedProperty(result);
+                    setPropertyCardVisible(true);
+                    setIsLoadingProperty(false);
+                  }}
+                >
+                  <div className="flex flex-col gap-1">
+                    <div className="font-medium text-base">
+                      {result.address.streetAddress}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {[result.address.city, result.address.state, result.address.zipcode]
+                        .filter(Boolean)
+                        .join(', ')}
+                    </div>
+                    {result.distanceToCity && (
+                      <div className="text-sm text-muted-foreground">
+                        {result.distanceToCity} ({result.durationToCity}) to {result.address.city}
+                      </div>
+                    )}
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        )}
       </Command>
     </div>
   );
