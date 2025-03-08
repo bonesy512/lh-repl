@@ -91,7 +91,7 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
       await apiRequest("POST", "/api/analyses", {
         parcelId: selectedProperty.id,
         analysis,
-        creditsUsed: 1,
+        creditsUsed: 50, // Cost 50 tokens for analysis
       });
 
       onAnalysisComplete?.(analysis);
@@ -114,7 +114,7 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
               <Alert variant="destructive" className="max-w-sm">
                 <CoinsIcon className="h-4 w-4" />
                 <AlertDescription>
-                  You're out of credits. Purchase more credits to continue analyzing properties.
+                  You're out of tokens. Purchase more tokens to analyze properties.
                 </AlertDescription>
               </Alert>
             )}
