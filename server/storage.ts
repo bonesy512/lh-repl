@@ -1,7 +1,7 @@
 import { users, parcels, campaigns, analyses } from "@shared/schema";
 import type { User, InsertUser, Parcel, InsertParcel, Campaign, InsertCampaign, Analysis, InsertAnalysis } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, gte, lte, desc, sql, and, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -25,6 +25,14 @@ export interface IStorage {
   getAnalysis(id: number): Promise<Analysis | undefined>;
   getAnalysesByParcel(parcelId: number): Promise<Analysis[]>;
   createAnalysis(analysis: InsertAnalysis): Promise<Analysis>;
+
+  // Property comparison operations
+  getSimilarProperties(params: {
+    city: string;
+    acres: number;
+    maxAcres: number;
+    zipCode: string;
+  }): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -105,6 +113,49 @@ export class DatabaseStorage implements IStorage {
   async createAnalysis(insertAnalysis: InsertAnalysis): Promise<Analysis> {
     const [analysis] = await db.insert(analyses).values(insertAnalysis).returning();
     return analysis;
+  }
+
+  async getSimilarProperties({
+    city,
+    acres,
+    maxAcres,
+    zipCode
+  }: {
+    city: string;
+    acres: number;
+    maxAcres: number;
+    zipCode: string;
+  }): Promise<any[]> {
+    const query = await db
+      .select({
+        id: parcels.id,
+        address: parcels.address,
+        price: parcels.price,
+        acres: parcels.acres,
+      })
+      .from(parcels)
+      .where(
+        and(
+          // Match city (case insensitive)
+          sql`LOWER(${parcels.address}->>'city') = ${city.toLowerCase()}`,
+          // Match zip code
+          sql`${parcels.address}->>'zipcode' = ${zipCode}`,
+          // Acres within range
+          gte(parcels.acres, acres),
+          lte(parcels.acres, maxAcres),
+          // Must have a price
+          isNotNull(parcels.price)
+        )
+      )
+      .limit(10) // Limit to prevent too many results
+      .orderBy(desc(parcels.createdAt));
+
+    return query.map(property => ({
+      address: property.address,
+      price: property.price,
+      acre: property.acres,
+      pricePerAcre: property.price / property.acres
+    }));
   }
 }
 

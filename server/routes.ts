@@ -244,6 +244,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add new endpoint for getting acre prices
+  app.post("/api/acres-prices", verifyFirebaseToken, async (req, res) => {
+    try {
+      const { city, acres, zip_code } = z.object({
+        city: z.string(),
+        acres: z.number(),
+        zip_code: z.string()
+      }).parse(req.body);
+
+      // Get similar properties from database
+      const similarProperties = await storage.getSimilarProperties({
+        city,
+        acres: acres * 0.75, // Lower bound (within 25%)
+        maxAcres: acres * 1.25, // Upper bound (within 25%)
+        zipCode: zip_code
+      });
+
+      res.json({ prices: similarProperties });
+    } catch (error: any) {
+      console.error('Error getting acre prices:', error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+
   const httpServer = createServer(app);
   return httpServer;
 }
