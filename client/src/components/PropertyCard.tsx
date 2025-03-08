@@ -43,6 +43,7 @@ export function PropertyCard({ onViewMore }: Props) {
   };
 
   const handleViewMore = () => {
+    console.log("View More button clicked");
     if (checkSubscription()) {
       if (onViewMore) {
         onViewMore();
@@ -55,12 +56,17 @@ export function PropertyCard({ onViewMore }: Props) {
   };
 
   const handleAnalyze = () => {
+    console.log("Analyze button clicked");
+    console.log("Selected property:", selectedProperty);
+
     if (!selectedProperty?.address?.streetAddress) {
+      console.error("Invalid property selected");
       toast.error("Invalid property selected");
       return;
     }
 
-    console.log("Analysis requested for property:", selectedProperty);
+    console.log("Checking subscription status");
+    console.log("User profile:", userProfile);
 
     if (checkSubscription()) {
       const address = selectedProperty.address.streetAddress;
@@ -68,9 +74,12 @@ export function PropertyCard({ onViewMore }: Props) {
       addRunningProperty(address);
 
       // Update analysis state directly in store
+      console.log("Setting property for analysis:", selectedProperty);
       setPropertyForAnalysis(selectedProperty);
+      console.log("Opening analysis dialog");
       setAnalysisDialogOpen(true);
     } else {
+      console.log("Subscription check failed");
       handleSubscriptionError();
     }
   };
