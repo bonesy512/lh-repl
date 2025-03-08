@@ -8,6 +8,7 @@ import Home from "@/pages/Home";
 import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
+import './App.css';
 
 function Router() {
   const [user, setUser] = useState(auth.currentUser);
@@ -67,21 +68,6 @@ function App() {
       <Router />
       <Toaster />
     </QueryClientProvider>
-  );
-}
-
-export default App;
-import React from 'react';
-import './App.css';
-
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Welcome to My App</h1>
-        <p>This is a React application built with Vite.</p>
-      </header>
-    </div>
   );
 }
 
