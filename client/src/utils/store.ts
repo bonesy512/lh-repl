@@ -33,6 +33,9 @@ type MapState = {
   setUserProfile: (profile: UserProfile | null) => void;
   savedProperties: SavedQuery[] | null;
   setSavedProperties: (properties: SavedQuery[] | null) => void;
+  runningProperties: string[];
+  addRunningProperty: (address: string) => void;
+  removeRunningProperty: (address: string) => void;
 };
 
 export const useAppStore = create<MapState>()(
@@ -101,6 +104,17 @@ export const useAppStore = create<MapState>()(
       // Saved properties
       savedProperties: null,
       setSavedProperties: (properties) => set({ savedProperties: properties }),
+
+      // Running properties for analysis
+      runningProperties: [],
+      addRunningProperty: (address) => 
+        set((state) => ({
+          runningProperties: [...state.runningProperties, address]
+        })),
+      removeRunningProperty: (address) =>
+        set((state) => ({
+          runningProperties: state.runningProperties.filter(p => p !== address)
+        })),
     }),
     {
       name: 'map-storage',
