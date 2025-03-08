@@ -9,10 +9,10 @@ import Home from "@/pages/Home";
 import Features from "@/pages/Features";
 import Pricing from "@/pages/Pricing";
 import Dashboard from "@/pages/Dashboard";
+import TeamMembers from "@/pages/TeamMembers";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 import './App.css';
-import { useLocation } from "wouter";
 
 function Router() {
   const [user, setUser] = useState(auth.currentUser);
@@ -59,12 +59,8 @@ function Router() {
         <Route path="/features" component={Features} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/login" component={Login} />
-        <Route path="/dashboard">
-          {user ? <Dashboard /> : () => {
-            window.location.href = "/login";
-            return null;
-          }}
-        </Route>
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/team" component={TeamMembers} />
         <Route component={NotFound} />
       </Switch>
     </>

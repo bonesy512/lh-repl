@@ -91,7 +91,7 @@ export function Navigation() {
                   <Users className="mr-2 h-4 w-4" />
                   <span>Dashboard</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/dashboard?tab=team")}>
+                <DropdownMenuItem onClick={() => navigate("/team")}>
                   <Users className="mr-2 h-4 w-4" />
                   <span>Team Members</span>
                 </DropdownMenuItem>
