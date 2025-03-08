@@ -16,7 +16,6 @@ import { useLocation } from "wouter";
 
 function Router() {
   const [user, setUser] = useState(auth.currentUser);
-  const [location] = useLocation();
 
   useEffect(() => {
     return auth.onAuthStateChanged((user) => {
@@ -52,11 +51,9 @@ function Router() {
     });
   }, []);
 
-  const showNavigation = location !== "/login";
-
   return (
     <>
-      {showNavigation && <Navigation />}
+      <Navigation />
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/features" component={Features} />
