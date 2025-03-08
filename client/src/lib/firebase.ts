@@ -1,24 +1,23 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, User } from "firebase/auth";
 import { getDatabase, ref, get, set, query, orderByChild, equalTo } from "firebase/database";
-import type { PropertyDetailsResponse } from "types";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: "landhacker-9a7c1.firebaseapp.com",
-  databaseURL: "https://landhacker-9a7c1-default-rtdb.firebaseio.com",
-  projectId: "landhacker-9a7c1",
-  storageBucket: "landhacker-9a7c1.firebasestorage.app",
+  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
   messagingSenderId: "1062549941272",
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
 
 // Property query functions
-export async function savePropertyQuery(userId: string, property: PropertyDetailsResponse) {
+export async function savePropertyQuery(userId: string, property: any) {
   const queryRef = ref(db, `queries/${userId}/${property.id}`);
   await set(queryRef, {
     ...property,
@@ -33,34 +32,49 @@ export async function getPropertyQuery(userId: string, propertyId: string) {
   return snapshot.exists() ? snapshot.val() : null;
 }
 
-export async function getSavedQueries(userId: string) {
-  const queriesRef = ref(db, `queries/${userId}`);
-  const snapshot = await get(queriesRef);
-  return snapshot.exists() ? Object.values(snapshot.val()) : [];
-}
-
-// AI analysis cache helpers
-export async function getCachedAnalysis(propertyId: string) {
-  const analysisRef = ref(db, `analyses/${propertyId}`);
-  const snapshot = await get(analysisRef);
-  return snapshot.exists() ? snapshot.val() : null;
-}
-
-export async function cacheAnalysis(propertyId: string, analysis: any) {
-  const analysisRef = ref(db, `analyses/${propertyId}`);
-  await set(analysisRef, {
-    ...analysis,
-    timestamp: Date.now(),
-    expiresAt: Date.now() + (24 * 60 * 60 * 1000) // Cache for 24 hours
-  });
-}
-
 export async function signInWithGoogle(): Promise<User> {
   const provider = new GoogleAuthProvider();
-  const result = await signInWithPopup(auth, provider);
-  return result.user;
+  try {
+    const result = await signInWithPopup(auth, provider);
+    console.log("Google sign in successful:", result.user);
+    return result.user;
+  } catch (error: any) {
+    console.error("Google sign in error:", error);
+    throw error;
+  }
 }
 
 export function signOut() {
   return auth.signOut();
 }
+
+// Set up Firebase auth state observer
+auth.onAuthStateChanged((user) => {
+  console.log("Auth state changed:", user ? "User logged in" : "User logged out");
+  if (user) {
+    // Add Firebase token to all API requests
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const [resource, config] = args;
+
+      if (typeof resource === 'string' && resource.startsWith('/api')) {
+        try {
+          const token = await user.getIdToken();
+          const modifiedConfig = {
+            ...config,
+            headers: {
+              ...config?.headers,
+              "Authorization": `Bearer ${token}`,
+            },
+          };
+          return originalFetch(resource, modifiedConfig);
+        } catch (error) {
+          console.error("Error getting Firebase token:", error);
+          return originalFetch(resource, config);
+        }
+      }
+
+      return originalFetch(resource, config);
+    };
+  }
+});

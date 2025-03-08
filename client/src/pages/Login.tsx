@@ -5,23 +5,35 @@ import { Loader2 } from "lucide-react";
 import { signInWithGoogle } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Login() {
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Redirect if already logged in
+  if (user) {
+    navigate("/dashboard");
+    return null;
+  }
 
   async function handleLogin() {
     try {
       setLoading(true);
+      console.log("Starting Google sign-in process...");
       const user = await signInWithGoogle();
+      console.log("Google sign-in successful:", user);
 
       // Create or verify user in our backend
+      console.log("Verifying user with backend...");
       await apiRequest("POST", "/api/auth/login", {
         firebaseUid: user.uid,
         email: user.email,
         username: user.displayName,
       });
+      console.log("Backend verification successful");
 
       navigate("/dashboard");
     } catch (error: any) {

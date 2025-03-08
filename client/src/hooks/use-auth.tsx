@@ -39,16 +39,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
   } = useQuery<User | null>({
     queryKey: ["/api/user"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+    queryFn: async () => {
+      console.log("Fetching user data...");
+      try {
+        const response = await getQueryFn({ on401: "returnNull" })();
+        console.log("User data response:", response);
+        return response || null;
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        return null;
+      }
+    },
     retry: false,
   });
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
+      console.log("Attempting login...");
       const res = await apiRequest("POST", "/api/auth/login", credentials);
-      return await res.json();
+      const data = await res.json();
+      console.log("Login response:", data);
+      return data;
     },
     onSuccess: (user: User) => {
+      console.log("Login successful, updating cache");
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Welcome back!",
@@ -56,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
+      console.error("Login mutation error:", error);
       toast({
         title: "Login failed",
         description: error.message,
@@ -66,8 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterData) => {
+      console.log("Attempting registration...");
       const res = await apiRequest("POST", "/api/auth/register", data);
-      return await res.json();
+      const userData = await res.json();
+      console.log("Registration response:", userData);
+      return userData;
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
@@ -77,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
+      console.error("Registration mutation error:", error);
       toast({
         title: "Registration failed",
         description: error.message,
@@ -87,9 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
+      console.log("Attempting logout...");
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
+      console.log("Logout successful, clearing cache");
       queryClient.setQueryData(["/api/user"], null);
       queryClient.clear();
       toast({
@@ -98,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
+      console.error("Logout mutation error:", error);
       toast({
         title: "Logout failed",
         description: error.message,
@@ -105,6 +127,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
   });
+
+  console.log("AuthProvider state:", { user, isLoading, error });
 
   return (
     <AuthContext.Provider
