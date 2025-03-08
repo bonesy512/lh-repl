@@ -43,29 +43,23 @@ export function Navigation() {
             LandHacker
           </div>
 
-          {/* Main Navigation */}
-          <nav className="hidden md:flex items-center space-x-4">
-            <Button
-              variant={location === "/features" ? "default" : "ghost"}
-              onClick={() => navigate("/features")}
-            >
-              Features
-            </Button>
-            <Button
-              variant={location === "/pricing" ? "default" : "ghost"}
-              onClick={() => navigate("/pricing")}
-            >
-              Pricing
-            </Button>
-            {user && (
+          {/* Main Navigation - only show when not logged in */}
+          {!user && (
+            <nav className="hidden md:flex items-center space-x-4">
               <Button
-                variant={location === "/dashboard" ? "default" : "ghost"}
-                onClick={() => navigate("/dashboard")}
+                variant={location === "/features" ? "default" : "ghost"}
+                onClick={() => navigate("/features")}
               >
-                Dashboard
+                Features
               </Button>
-            )}
-          </nav>
+              <Button
+                variant={location === "/pricing" ? "default" : "ghost"}
+                onClick={() => navigate("/pricing")}
+              >
+                Pricing
+              </Button>
+            </nav>
+          )}
         </div>
 
         {/* Credits and User Menu */}
@@ -94,6 +88,10 @@ export function Navigation() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                  <Users className="mr-2 h-4 w-4" />
+                  <span>Dashboard</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/dashboard?tab=team")}>
                   <Users className="mr-2 h-4 w-4" />
                   <span>Team Members</span>
                 </DropdownMenuItem>
