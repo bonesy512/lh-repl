@@ -200,6 +200,47 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Properties Analyzed Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Properties Analyzed</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {parcels?.map((parcel) => (
+                    <div key={parcel.id} className="flex items-start space-x-4 border-b pb-4 last:border-0">
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {parcel.address}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {parcel.acres} acres {parcel.price && `• $${parcel.price.toLocaleString()}`}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedParcel(parcel);
+                            handleAnalyze();
+                          }}
+                        >
+                          View Analysis
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {!parcels?.length && (
+                    <div className="text-center py-6 text-muted-foreground">
+                      No properties analyzed yet
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
