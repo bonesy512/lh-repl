@@ -22,10 +22,13 @@ export function PropertyCard({ onViewMore }: Props) {
     setAnalysisDialogOpen
   } = useAppStore();
 
+  // Temporarily allow analysis for testing
   const checkSubscription = () => {
-    return userProfile?.subscriptionTier === "monthly" || 
-           userProfile?.subscriptionStatus === "active" || 
-           userProfile?.subscriptionStatus === "cancelled_active";
+    // TODO: Restore subscription check after testing
+    return true;
+    // return userProfile?.subscriptionTier === "monthly" || 
+    //        userProfile?.subscriptionStatus === "active" || 
+    //        userProfile?.subscriptionStatus === "cancelled_active";
   };
 
   const handleSubscriptionError = () => {

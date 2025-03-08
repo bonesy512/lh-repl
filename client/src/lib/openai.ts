@@ -9,7 +9,7 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true
 });
 
-async function getDistanceToCity(latitude: number, longitude: number): Promise<DistanceInfo> {
+async function getDistanceToCity(latitude: number, longitude: number): Promise<DistanceInfo | null> {
   try {
     const response = await apiRequest(
       "POST", 
@@ -20,7 +20,18 @@ async function getDistanceToCity(latitude: number, longitude: number): Promise<D
       }
     );
 
-    return await response.json();
+    if (!response.ok) {
+      console.error("Distance API error:", await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data || typeof data !== 'object') {
+      console.error("Invalid distance data format:", data);
+      return null;
+    }
+
+    return data as DistanceInfo;
   } catch (error) {
     console.error("Failed to get distance info:", error);
     return null;
