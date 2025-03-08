@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { Check } from "lucide-react";
 
 export default function Home() {
   const [, navigate] = useLocation();
@@ -20,7 +21,7 @@ export default function Home() {
           className="text-lg"
           onClick={() => navigate("/login")}
         >
-          Get Started
+          Start Free Trial
         </Button>
       </section>
 
@@ -94,6 +95,57 @@ export default function Home() {
               Create targeted marketing campaigns with AI-generated content and
               analytics.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">Simple, Transparent Pricing</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Get started with our professional plan and scale your team as needed.
+          </p>
+        </div>
+
+        <div className="max-w-md mx-auto">
+          <div className="rounded-lg border bg-card p-8">
+            <h3 className="text-2xl font-bold text-center mb-2">Professional</h3>
+            <div className="text-center mb-6">
+              <span className="text-4xl font-bold">$20</span>
+              <span className="text-muted-foreground">/month</span>
+            </div>
+
+            <ul className="space-y-4 mb-8">
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-primary mr-2" />
+                <span>Unlimited Property Analysis</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-primary mr-2" />
+                <span>AI-Powered Comp Generation</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-primary mr-2" />
+                <span>Marketing Campaign Tools</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-primary mr-2" />
+                <span>Add Team Members ($10/month each)</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-primary mr-2" />
+                <span>Purchase Additional Tokens as Needed</span>
+              </li>
+            </ul>
+
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={() => navigate("/login")}
+            >
+              Get Started
+            </Button>
           </div>
         </div>
       </section>
