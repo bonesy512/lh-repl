@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-import { getCachedAnalysis, cacheAnalysis } from "./firebase";
 import { type PropertyAnalysis, type DistanceInfo } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -15,8 +14,8 @@ async function getDistanceToCity(latitude: number, longitude: number): Promise<D
       "POST", 
       "/api/distance-to-city",
       {
-        origins: `${latitude},${longitude}`,
-        destination: "nearest" // API will find nearest major city
+        latitude,
+        longitude
       }
     );
 
@@ -26,11 +25,6 @@ async function getDistanceToCity(latitude: number, longitude: number): Promise<D
     }
 
     const data = await response.json();
-    if (!data || typeof data !== 'object') {
-      console.error("Invalid distance data format:", data);
-      return null;
-    }
-
     return data as DistanceInfo;
   } catch (error) {
     console.error("Failed to get distance info:", error);
@@ -57,44 +51,62 @@ export async function analyzeProperty(
     // Get distance to nearest city
     const distanceInfo = await getDistanceToCity(latitude, longitude);
 
+    // Sanitize inputs
+    const sanitizedAddress = address.replace(/[^\w\s,.-]/g, '');
+    const sanitizedAcres = Math.max(0.1, Math.min(10000, acres));
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `You are a real estate analysis expert specializing in land valuation. 
-          Analyze properties considering location, size, and market conditions.
-          Provide detailed insights including estimated value, confidence score, and comparable properties.`
+          content: `You are a real estate analysis expert specializing in land valuation. Analyze properties considering location, size, and market conditions. Return the analysis in the exact format specified.`
         },
         {
           role: "user",
-          content: `Please analyze this property:
-            Address: ${address}
-            Acres: ${acres}
+          content: `Analyze this property:
+            Address: ${sanitizedAddress}
+            Acres: ${sanitizedAcres}
             Location: ${latitude}, ${longitude}
-            ${currentPrice ? `Listed Price: $${currentPrice}` : ''}
-            ${distanceInfo ? `Distance to ${distanceInfo.nearestCity}: ${distanceInfo.distanceText} (${distanceInfo.durationText} drive)` : ''}
+            ${currentPrice ? `Current Market Value: $${currentPrice.toLocaleString()}` : ''}
+            ${distanceInfo ? `Distance to ${distanceInfo.nearestCity}: ${distanceInfo.distanceText}` : ''}
 
-            Provide a detailed analysis including:
-            1. Estimated market value with confidence score
-            2. Key features of the property
-            3. Potential risks and opportunities
-            4. Market trends in the area
-            5. Comparable properties with similar characteristics
-
-            Return the analysis in JSON format matching the PropertyAnalysis type.`
+            Return the analysis as a JSON object with exactly these fields:
+            {
+              "estimatedValue": number (whole dollars),
+              "confidenceScore": number (between 0 and 1),
+              "keyFeatures": string[],
+              "risks": string[],
+              "opportunities": string[],
+              "marketTrends": {
+                "direction": "up" | "down" | "stable",
+                "reasoning": string
+              }
+            }`
         }
       ],
       response_format: { type: "json_object" }
     });
 
+    if (!response.choices[0].message.content) {
+      throw new Error("No response content from OpenAI");
+    }
+
+    console.log("Raw OpenAI response:", response.choices[0].message.content);
+
     const analysis = JSON.parse(response.choices[0].message.content) as PropertyAnalysis;
 
-    // Add distance info to the analysis
+    // Validate the response format
+    if (!analysis.estimatedValue || !analysis.confidenceScore || !analysis.marketTrends) {
+      throw new Error("Invalid analysis format from OpenAI");
+    }
+
+    // Add distance info if available
     if (distanceInfo) {
       analysis.distanceInfo = distanceInfo;
     }
 
+    console.log("Final analysis:", analysis);
     return analysis;
   } catch (error: any) {
     console.error('Analysis error:', error);
@@ -112,18 +124,26 @@ export async function generateMarketingDescription(
       messages: [
         {
           role: "system",
-          content: "You are a real estate marketing expert. Create compelling property descriptions."
+          content: "You are a real estate marketing expert specializing in crafting compelling property descriptions. Create engaging and persuasive content that highlights the unique features and value propositions of the property."
         },
         {
           role: "user",
           content: `Create a marketing description for this property targeting ${targetAudience}:
-            ${JSON.stringify(propertyDetails, null, 2)}`
+            Property Details:
+            ${JSON.stringify(propertyDetails, null, 2)}
+
+            Focus on:
+            1. Location advantages
+            2. Property features and potential
+            3. Investment opportunities
+            4. Unique selling points`
         }
       ]
     });
 
-    return response.choices[0].message.content || "";
+    return response.choices[0].message.content || "No description generated.";
   } catch (error: any) {
+    console.error('Marketing description error:', error);
     throw new Error(`Failed to generate marketing description: ${error.message}`);
   }
 }
