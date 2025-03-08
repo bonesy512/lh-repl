@@ -148,7 +148,9 @@ export class DatabaseStorage implements IStorage {
         fipsCode: sql<string>`${parcels.details}::jsonb->>'fipsCode'`,
         county: sql<string>`${parcels.details}::jsonb->>'county'`,
         landValue: sql<number>`(${parcels.details}::jsonb->>'landValue')::numeric`,
-        improvementValue: sql<number>`(${parcels.details}::jsonb->>'improvementValue')::numeric`
+        improvementValue: sql<number>`(${parcels.details}::jsonb->>'improvementValue')::numeric`,
+        latitude: sql<number>`(${parcels.address}::jsonb->>'latitude')::numeric`,
+        longitude: sql<number>`(${parcels.address}::jsonb->>'longitude')::numeric`
       })
       .from(parcels)
       .where(
@@ -157,9 +159,9 @@ export class DatabaseStorage implements IStorage {
           sql`LOWER(${parcels.address}::jsonb->>'city') = ${city.toLowerCase()}`,
           // Use zip prefix for broader area search
           sql`${parcels.address}::jsonb->>'zipcode' LIKE ${zipPrefix + '%'}`,
-          // Flexible acre range (within 50% to 200% of target)
-          sql`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) > ${acres * 0.5}`,
-          sql`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) < ${acres * 2}`,
+          // Dynamic acre range based on property size
+          sql`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) >= ${acres * 0.5}`,
+          sql`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) <= ${acres * 2}`,
           // Must have either market value or price
           sql`COALESCE((${parcels.details}::jsonb->>'marketValue')::numeric, ${parcels.price}) IS NOT NULL`
         )
@@ -169,17 +171,43 @@ export class DatabaseStorage implements IStorage {
 
     console.log("Raw query results:", query);
 
-    const results = query.map(property => ({
-      address: typeof property.address === 'string' ? JSON.parse(property.address) : property.address,
-      price: property.marketValue || property.price,
-      acre: property.gisArea || property.acres,
-      pricePerAcre: (property.marketValue || property.price) / (property.gisArea || property.acres),
-      // Include additional GIS data
-      fipsCode: property.fipsCode,
-      county: property.county,
-      landValue: property.landValue,
-      improvementValue: property.improvementValue
-    }));
+    const results = query.map(property => {
+      const propertyAcres = property.gisArea || property.acres;
+      const propertyPrice = property.marketValue || property.price;
+      const pricePerAcre = propertyPrice / propertyAcres;
+
+      // Calculate similarity score based on multiple factors
+      const acreSimilarity = 1 - Math.abs(propertyAcres - acres) / Math.max(propertyAcres, acres);
+      const priceSimilarity = property.landValue ? 0.2 : 0; // Bonus for having detailed value data
+      const similarityScore = acreSimilarity + priceSimilarity;
+
+      return {
+        address: typeof property.address === 'string' ? JSON.parse(property.address) : property.address,
+        price: propertyPrice,
+        acre: propertyAcres,
+        pricePerAcre,
+        similarityScore,
+        // Include additional data
+        fipsCode: property.fipsCode,
+        county: property.county,
+        landValue: property.landValue,
+        improvementValue: property.improvementValue,
+        // Include location data
+        latitude: property.latitude,
+        longitude: property.longitude
+      };
+    });
+
+    // Sort by similarity score and price per acre relevance
+    results.sort((a, b) => {
+      // Primary sort by similarity score
+      if (b.similarityScore !== a.similarityScore) {
+        return b.similarityScore - a.similarityScore;
+      }
+      // Secondary sort by price per acre (closer to median)
+      const median = results.reduce((acc, curr) => acc + curr.pricePerAcre, 0) / results.length;
+      return Math.abs(a.pricePerAcre - median) - Math.abs(b.pricePerAcre - median);
+    });
 
     console.log(`Found ${results.length} similar properties:`, results);
     return results;
