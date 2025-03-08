@@ -26,6 +26,8 @@ export function AIAnalysis({ parcel, onAnalysisComplete }: AIAnalysisProps) {
       const analysis = await analyzeProperty(
         parcel.address,
         Number(parcel.acres),
+        Number(parcel.latitude),
+        Number(parcel.longitude),
         parcel.price
       );
 

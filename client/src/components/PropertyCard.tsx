@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { type Parcel, type Analysis } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin, TrendingUp, AlertTriangle } from "lucide-react";
 
 interface PropertyCardProps {
   parcel: Parcel;
@@ -56,6 +56,32 @@ export function PropertyCard({ parcel, onAnalyze, onCreateCampaign }: PropertyCa
                 </div>
               </div>
             </div>
+
+            {latestAnalysis.analysis.distanceInfo && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-2">Location</h4>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 mt-1 text-muted-foreground" />
+                    <div>
+                      <p>{latestAnalysis.analysis.distanceInfo.distanceText} to {latestAnalysis.analysis.distanceInfo.nearestCity}</p>
+                      <p className="text-sm text-muted-foreground">{latestAnalysis.analysis.distanceInfo.durationText} drive</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <Separator />
+            <div>
+              <h4 className="font-medium mb-2">Market Trends</h4>
+              <div className="flex items-start gap-2">
+                <TrendingUp className="h-4 w-4 mt-1 text-muted-foreground" />
+                <p className="text-sm">{latestAnalysis.analysis.marketTrends.reasoning}</p>
+              </div>
+            </div>
+
             <Separator />
             <div>
               <h4 className="font-medium mb-2">Key Features</h4>
@@ -64,6 +90,23 @@ export function PropertyCard({ parcel, onAnalyze, onCreateCampaign }: PropertyCa
                   <li key={i} className="text-sm">{feature}</li>
                 ))}
               </ul>
+            </div>
+
+            <Separator />
+            <div>
+              <h4 className="font-medium mb-2">Risks & Opportunities</h4>
+              <div className="grid gap-4">
+                <div>
+                  <h5 className="text-sm font-medium flex items-center gap-1 mb-2">
+                    <AlertTriangle className="h-4 w-4" /> Risks
+                  </h5>
+                  <ul className="list-disc list-inside space-y-1">
+                    {latestAnalysis.analysis.risks.map((risk, i) => (
+                      <li key={i} className="text-sm">{risk}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -76,7 +119,7 @@ export function PropertyCard({ parcel, onAnalyze, onCreateCampaign }: PropertyCa
             </Button>
           </div>
         )}
-        
+
         <div className="mt-6 flex gap-2">
           <Button
             variant="outline"
