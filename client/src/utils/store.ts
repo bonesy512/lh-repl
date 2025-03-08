@@ -37,17 +37,18 @@ type MapState = {
   runningProperties: string[];
   addRunningProperty: (address: string) => void;
   removeRunningProperty: (address: string) => void;
-  // Add analysis dialog state
   analysisDialogOpen: boolean;
   setAnalysisDialogOpen: (open: boolean) => void;
   propertyForAnalysis: PropertyDetailsResponse | null;
   setPropertyForAnalysis: (property: PropertyDetailsResponse | null) => void;
+  activeLayers: string[];
+  toggleLayer: (layerId: string) => void;
+  setActiveLayers: (layers: string[]) => void;
 };
 
 export const useAppStore = create<MapState>()(
   persist(
     (set) => ({
-      // Existing state
       selectedProperty: null,
       setSelectedProperty: (property) => set({ selectedProperty: property }),
       isLoadingProperty: false,
@@ -78,7 +79,7 @@ export const useAppStore = create<MapState>()(
       setCurrentMeasurement: (value) => set({ currentMeasurement: value }),
       viewportCenter: [-96.7970, 32.7767],
       setViewportCenter: (center) => set({ viewportCenter: center }),
-      mapStyle: 'streets-v11',
+      mapStyle: 'mapbox://styles/mapbox/streets-v11',
       setMapStyle: (style) => set({ mapStyle: style }),
       propertyCardVisible: true,
       setPropertyCardVisible: (visible) => set({ propertyCardVisible: visible }),
@@ -95,11 +96,18 @@ export const useAppStore = create<MapState>()(
         set((state) => ({
           runningProperties: state.runningProperties.filter(p => p !== address)
         })),
-      // Add analysis dialog state
       analysisDialogOpen: false,
       setAnalysisDialogOpen: (open) => set({ analysisDialogOpen: open }),
       propertyForAnalysis: null,
       setPropertyForAnalysis: (property) => set({ propertyForAnalysis: property }),
+      activeLayers: ["parcel-boundaries"],
+      toggleLayer: (layerId) =>
+        set((state) => ({
+          activeLayers: state.activeLayers.includes(layerId)
+            ? state.activeLayers.filter((id) => id !== layerId)
+            : [...state.activeLayers, layerId],
+        })),
+      setActiveLayers: (layers) => set({ activeLayers: layers }),
     }),
     {
       name: 'map-storage',
@@ -107,6 +115,7 @@ export const useAppStore = create<MapState>()(
         mapStyle: state.mapStyle,
         viewportCenter: state.viewportCenter,
         measurementUnits: state.measurementUnits,
+        activeLayers: state.activeLayers,
       }),
     }
   )

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import type { Parcel } from '@shared/schema';
 import { useAppStore } from "@/utils/store";
+import { LayerControl } from "./map/LayerControl";
 
 interface PropertyMapProps {
   parcels?: Parcel[];
@@ -80,6 +81,9 @@ export default function PropertyMap({
     );
   }
 
+  // Assuming activeLayers is defined elsewhere in the component
+  const activeLayers = ["terrain", "satellite", "parcel-boundaries"]; //Example, replace with actual logic
+
   return (
     <div className="w-full h-[600px] relative">
       {/* Search Bar */}
@@ -87,8 +91,58 @@ export default function PropertyMap({
         <SearchBar mapRef={mapRef} />
       </div>
 
+      {/* Map Layers */}
+      {activeLayers.includes("terrain") && (
+        <Source
+          id="terrain"
+          type="raster-dem"
+          url="mapbox://mapbox.mapbox-terrain-dem-v1"
+        >
+          <Layer
+            id="terrain-data"
+            type="hillshade"
+            paint={{
+              "hillshade-exaggeration": 0.6
+            }}
+          />
+        </Source>
+      )}
+
+      {activeLayers.includes("satellite") && (
+        <Source
+          id="satellite"
+          type="raster"
+          url="mapbox://mapbox.satellite"
+        >
+          <Layer
+            id="satellite-layer"
+            type="raster"
+          />
+        </Source>
+      )}
+
+      {activeLayers.includes("parcel-boundaries") && (
+        <Source
+          id="parcel-boundaries"
+          type="vector"
+          url="mapbox://mapbox.boundaries-adm2"
+        >
+          <Layer
+            id="parcel-lines"
+            type="line"
+            source-layer="boundaries_admin_2"
+            paint={{
+              "line-color": "#FF0000",
+              "line-width": 1
+            }}
+          />
+        </Source>
+      )}
+
+
       {/* Measurement Controls */}
-      <div className="absolute bottom-[175px] left-2.5 z-[1]">
+      <div className="absolute bottom-[175px] left-2.5 z-[1] flex flex-col gap-2">
+        <LayerControl />
         <MeasurementControls />
       </div>
 
