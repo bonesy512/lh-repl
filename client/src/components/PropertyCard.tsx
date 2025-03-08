@@ -4,6 +4,7 @@ import { useAppStore } from "@/utils/store";
 import { Card } from "@/components/ui/card";
 import { HomeIcon, ExternalLinkIcon, XIcon, UserIcon, BrainIcon } from "lucide-react";
 import { toast } from "sonner";
+import type { PropertyDetailsResponse } from "types";
 
 export interface Props {
   onViewMore?: () => void;
@@ -19,48 +20,55 @@ export function PropertyCard({ onViewMore }: Props) {
     runningProperties 
   } = useAppStore();
 
-  const handleViewMore = () => {
-    if (userProfile?.subscriptionTier === "monthly" || userProfile?.subscriptionStatus === "active" || userProfile?.subscriptionStatus === "cancelled_active") {
-      onViewMore?.();
-    } else {
-      toast.error("You need an active subscription to view detailed property analysis", {
-        duration: 5000,
-        description: "Subscribe in your profile to unlock all features",
-        action: {
-          label: "Profile",
-          onClick: () => {
-            const event = new CustomEvent("open-user-dialog");
-            window.dispatchEvent(event);
-          }
+  const checkSubscription = () => {
+    return userProfile?.subscriptionTier === "monthly" || 
+           userProfile?.subscriptionStatus === "active" || 
+           userProfile?.subscriptionStatus === "cancelled_active";
+  };
+
+  const handleSubscriptionError = () => {
+    toast.error("You need an active subscription to access this feature", {
+      duration: 5000,
+      description: "Subscribe in your profile to unlock all features",
+      action: {
+        label: "Profile",
+        onClick: () => {
+          const event = new CustomEvent("open-user-dialog");
+          window.dispatchEvent(event);
         }
-      });
+      }
+    });
+  };
+
+  const handleViewMore = () => {
+    if (checkSubscription()) {
+      if (onViewMore) {
+        onViewMore();
+      } else {
+        console.error("onViewMore handler not provided");
+      }
+    } else {
+      handleSubscriptionError();
     }
   };
 
   const handleAnalyze = () => {
-    if (!selectedProperty?.address?.streetAddress) return;
+    if (!selectedProperty?.address?.streetAddress) {
+      toast.error("Invalid property selected");
+      return;
+    }
 
-    if (userProfile?.subscriptionTier === "monthly" || userProfile?.subscriptionStatus === "active" || userProfile?.subscriptionStatus === "cancelled_active") {
+    if (checkSubscription()) {
       const address = selectedProperty.address.streetAddress;
       addRunningProperty(address);
 
-      // Open analysis dialog
+      // Open analysis dialog with property data
       const event = new CustomEvent("open-analysis-dialog", { 
         detail: { property: selectedProperty }
       });
       window.dispatchEvent(event);
     } else {
-      toast.error("You need an active subscription to analyze properties", {
-        duration: 5000,
-        description: "Subscribe in your profile to unlock all features",
-        action: {
-          label: "Profile",
-          onClick: () => {
-            const event = new CustomEvent("open-user-dialog");
-            window.dispatchEvent(event);
-          }
-        }
-      });
+      handleSubscriptionError();
     }
   };
 
