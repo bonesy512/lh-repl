@@ -93,6 +93,7 @@ app.use((req, res, next) => {
         serveStatic(app);
       } catch (buildError) {
         console.error('Failed to build client:', buildError);
+        console.error('Error details:', buildError instanceof Error ? buildError.stack : buildError);
         throw buildError;
       }
     } else if (app.get("env") === "development") {
