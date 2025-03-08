@@ -15,26 +15,28 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { type Parcel } from "@shared/schema";
-import { CreditCard, Users, Activity } from "lucide-react";
+import { CreditCard, Users, Activity, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
-  const [activeDialog, setActiveDialog] = useState<"analysis" | "marketing" | null>(
-    null
-  );
+  const [activeDialog, setActiveDialog] = useState<"analysis" | "marketing" | null>(null);
   const [, navigate] = useLocation();
 
-  const { data: parcels, isLoading: loadingParcels } = useQuery({
-    queryKey: ["/api/parcels"],
-  });
-
-  const { data: user } = useQuery({
+  // Fetch user data
+  const { data: user, isLoading: loadingUser } = useQuery({
     queryKey: ["/api/user"],
   });
 
-  const { data: invoices } = useQuery({
+  // Fetch parcels data
+  const { data: parcels, isLoading: loadingParcels, error: parcelsError } = useQuery({
+    queryKey: ["/api/parcels"],
+  });
+
+  // Fetch invoices data
+  const { data: invoices, isLoading: loadingInvoices } = useQuery({
     queryKey: ["/api/invoices"],
   });
 
@@ -44,7 +46,7 @@ export default function Dashboard() {
 
   function handleAnalyze() {
     if (!selectedParcel) return;
-    if (user?.credits < 1) {
+    if (!user?.credits || user.credits < 1) {
       toast({
         title: "Insufficient Credits",
         description: "Please purchase more credits to perform analysis.",
@@ -60,9 +62,30 @@ export default function Dashboard() {
     setActiveDialog("marketing");
   }
 
+  // Show loading state
+  if (loadingUser || loadingParcels) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // Show error state
+  if (parcelsError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to load dashboard data. Please try again later.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Overview Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -127,15 +150,17 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="map" className="space-y-8">
+            {/* Map Component */}
             <PropertyMap
-              parcels={parcels}
+              parcels={parcels || []}
               onParcelSelect={handleParcelSelect}
               loading={loadingParcels}
             />
 
+            {/* Property Card */}
             {selectedParcel && (
               <PropertyCard
-                parcel={selectedParcel}
+                property={selectedParcel}
                 onAnalyze={handleAnalyze}
                 onCreateCampaign={handleCreateCampaign}
               />
@@ -144,30 +169,44 @@ export default function Dashboard() {
 
           <TabsContent value="billing" className="space-y-8">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+              {/* Invoice History */}
               <Card className="col-span-4">
                 <CardHeader>
                   <CardTitle>Invoice History</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-8">
-                    {invoices?.map((invoice: any) => (
-                      <div key={invoice.id} className="flex items-center">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium leading-none">
-                            {invoice.description}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(invoice.date).toLocaleDateString()}
-                          </p>
+                  {loadingInvoices ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="space-y-8">
+                      {(invoices || []).map((invoice: any) => (
+                        <div key={invoice.id} className="flex items-center">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium leading-none">
+                              {invoice.description}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(invoice.date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="ml-auto font-medium">
+                            ${invoice.amount}
+                          </div>
                         </div>
-                        <div className="ml-auto font-medium">
-                          ${invoice.amount}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                      {!invoices?.length && (
+                        <p className="text-center text-muted-foreground">
+                          No invoices found
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
+
+              {/* Current Plan */}
               <Card className="col-span-3">
                 <CardHeader>
                   <CardTitle>Current Plan</CardTitle>
@@ -188,7 +227,6 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </div>
-
             {/* Properties Analyzed Section */}
             <Card>
               <CardHeader>
@@ -232,7 +270,7 @@ export default function Dashboard() {
           </TabsContent>
         </Tabs>
 
-        {/* Dialogs */}
+        {/* Analysis Dialog */}
         <Dialog
           open={activeDialog === "analysis"}
           onOpenChange={() => setActiveDialog(null)}
@@ -250,6 +288,7 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
+        {/* Marketing Dialog */}
         <Dialog
           open={activeDialog === "marketing"}
           onOpenChange={() => setActiveDialog(null)}
