@@ -4,6 +4,7 @@ import ReactMapGL, { NavigationControl, GeolocateControl, Marker, Source, Layer,
 import { MeasurementLayer } from "./map/MeasurementLayer";
 import { MeasurementControls } from "./map/MeasurementControls";
 import { MeasurementCard } from "./map/MeasurementCard";
+import { PropertyCard } from "./PropertyCard";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -16,6 +17,7 @@ interface PropertyMapProps {
   parcels?: Parcel[];
   onParcelSelect?: (parcel: Parcel) => void;
   loading?: boolean;
+  onViewMore?: () => void;
 }
 
 // Custom control for MapboxDraw
@@ -51,7 +53,8 @@ function DrawControl(props: DrawControlProps) {
 export default function PropertyMap({
   parcels = [],
   onParcelSelect,
-  loading = false
+  loading = false,
+  onViewMore
 }: PropertyMapProps) {
   const [viewport, setViewport] = useState({
     latitude: 39.8283,
@@ -69,8 +72,9 @@ export default function PropertyMap({
     addCompletedMeasurement,
     clearMeasurements,
     setViewportCenter,
-    addMeasurementPoint, // Assuming this function exists
-    fetchPropertyDetails // Assuming this function exists
+    addMeasurementPoint,
+    propertyCardVisible,
+    selectedProperty
   } = useAppStore();
 
   // Get user's location on mount
@@ -121,6 +125,13 @@ export default function PropertyMap({
         </div>
       )}
 
+      {/* Property Card */}
+      {propertyCardVisible && selectedProperty && (
+        <div className="absolute top-4 right-4 z-[3] w-[400px] max-w-[calc(100vw-2rem)]">
+          <PropertyCard onViewMore={onViewMore} />
+        </div>
+      )}
+
       <ReactMapGL
         ref={mapRef}
         {...viewport}
@@ -159,7 +170,11 @@ export default function PropertyMap({
                   });
                   if (features.length > 0) {
                     const feature = features[0];
-                    fetchPropertyDetails(evt.lngLat.lat, evt.lngLat.lng, feature, true);
+                    // Update selectedParcel instead of calling fetchPropertyDetails
+                    setSelectedParcel(parcel);
+                    if (onParcelSelect) {
+                      onParcelSelect(parcel);
+                    }
                   }
                 }
               }
