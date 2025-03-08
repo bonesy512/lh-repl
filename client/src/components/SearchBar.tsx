@@ -59,22 +59,18 @@ export function SearchBar({ onSearch, mapRef }: Props) {
       return;
     }
 
-    // Only show loading state if query is long enough
     if (query.length >= 2) {
       setLoading(true);
     }
 
-    // Clear previous timeout
     if (searchTimeout.current) {
       clearTimeout(searchTimeout.current);
     }
 
-    // Set new timeout for 500ms for better responsiveness
     searchTimeout.current = setTimeout(() => {
       handleSearch(query);
     }, 500);
 
-    // Cleanup timeout on unmount or when query changes
     return () => {
       if (searchTimeout.current) {
         clearTimeout(searchTimeout.current);
@@ -83,20 +79,18 @@ export function SearchBar({ onSearch, mapRef }: Props) {
   }, [query]);
 
   const isCoordinates = (query: string): Coordinates | null => {
-    // Match patterns like "40.7128,-74.0060" or "40.7128, -74.0060"
     const coordPattern = /^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/;
     const match = query.match(coordPattern);
-    
+
     if (match) {
       const latitude = parseFloat(match[1]);
       const longitude = parseFloat(match[2]);
-      
-      // Basic validation of coordinates
+
       if (latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
         return { latitude, longitude };
       }
     }
-    
+
     return null;
   };
 
@@ -108,75 +102,37 @@ export function SearchBar({ onSearch, mapRef }: Props) {
     return `${base}?${searchParams.toString()}`;
   };
 
-  const handleReverseGeocode = async (coords: Coordinates) => {
-    console.log('Reverse geocoding coordinates:', coords);    
-    setLoading(true);
-    try {
-      const url = buildMapboxUrl(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${coords.longitude},${coords.latitude}.json`,
-        {
-          types: 'address,place,locality,neighborhood',
-          limit: '5',
-          country: 'us',
-        }
-      );
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Mapbox API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data: GeocodingResponse = await response.json();
-      console.log('Reverse geocoding response:', data);
-
-      if (!data?.features?.length) {
-        console.log('No features found in response');
-        setSearchResults([]);
-        return;
-      }
-      
-      // Transform Mapbox results to match our app's format
-      const transformedResults = data.features.map((feature, index) => ({
-        zpid: `mb_${Date.now()}_${index}`,
-        streetAddress: feature.place_name || feature.text,
-        city: feature.context?.find(ctx => ctx.id.startsWith('place.'))?.text || '',
-        state: feature.context?.find(ctx => ctx.id.startsWith('region.'))?.text || '',
-        zipcode: feature.context?.find(ctx => ctx.id.startsWith('postcode.'))?.text || '',
-        latitude: coords.latitude,
-        longitude: coords.longitude
-      }));
-      
-      setSearchResults(transformedResults);
-    } catch (error) {
-      console.error('Reverse geocoding failed:', error);
-      setSearchResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSearch = async (query: string) => {
     if (!query || query.length < 2) {
       setSearchResults([]);
       return;
     }
 
-    // Check if input is coordinates
-    const coords = isCoordinates(query);
-    if (coords) {
-      await handleReverseGeocode(coords);
-      return;
-    }
-
     setLoading(true);
     try {
-      const url = buildMapboxUrl(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`,
-        {
-          types: 'address,place,locality,neighborhood',
-          limit: '5',
-          country: 'us',
-        }
-      );
+      // Handle coordinates input
+      const coords = isCoordinates(query);
+      let url;
+      if (coords) {
+        url = buildMapboxUrl(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${coords.longitude},${coords.latitude}.json`,
+          {
+            types: 'address,place,locality,neighborhood',
+            limit: '5',
+            country: 'us',
+          }
+        );
+      } else {
+        url = buildMapboxUrl(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`,
+          {
+            types: 'address,place,locality,neighborhood',
+            limit: '5',
+            country: 'us',
+          }
+        );
+      }
+
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Mapbox API error: ${response.status} ${response.statusText}`);
@@ -185,22 +141,49 @@ export function SearchBar({ onSearch, mapRef }: Props) {
       const data: GeocodingResponse = await response.json();
 
       if (!data?.features?.length) {
-        console.log('No features found in response');
         setSearchResults([]);
         return;
       }
-      
+
       // Transform Mapbox results to match our app's format
-      const transformedResults = data.features.map((feature, index) => ({
-        zpid: `mb_${Date.now()}_${index}`,
-        streetAddress: feature.place_name || feature.text,
-        city: feature.context?.find(ctx => ctx.id.startsWith('place.'))?.text || '',
-        state: feature.context?.find(ctx => ctx.id.startsWith('region.'))?.text || '',
-        zipcode: feature.context?.find(ctx => ctx.id.startsWith('postcode.'))?.text || '',
-        latitude: feature.center[1],
-        longitude: feature.center[0]
+      const transformedResults = await Promise.all(data.features.map(async (feature, index) => {
+        const result = {
+          zpid: `mb_${Date.now()}_${index}`,
+          streetAddress: feature.place_name || feature.text,
+          city: feature.context?.find(ctx => ctx.id.startsWith('place.'))?.text || '',
+          state: feature.context?.find(ctx => ctx.id.startsWith('region.'))?.text || '',
+          zipcode: feature.context?.find(ctx => ctx.id.startsWith('postcode.'))?.text || '',
+          latitude: feature.center[1],
+          longitude: feature.center[0]
+        };
+
+        // Get distance to nearest city if coordinates are available
+        if (result.latitude && result.longitude) {
+          try {
+            const distanceResponse = await fetch('/api/distance-to-city', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                origins: `${result.latitude},${result.longitude}`,
+                destination: result.city || 'nearest city'
+              })
+            });
+
+            if (distanceResponse.ok) {
+              const distanceData = await distanceResponse.json();
+              result.distanceToCity = distanceData.distance_text;
+              result.durationToCity = distanceData.duration_text;
+            }
+          } catch (error) {
+            console.error('Error fetching distance:', error);
+          }
+        }
+
+        return result;
       }));
-      
+
       setSearchResults(transformedResults);
     } catch (error) {
       console.error('Search failed:', error);
@@ -221,7 +204,6 @@ export function SearchBar({ onSearch, mapRef }: Props) {
           className="h-10 bg-background/90 backdrop-blur-sm w-full text-base"
           onFocus={() => setFocused(true)}
           onBlur={() => {
-            // Small delay to allow onSelect to fire
             setTimeout(() => setFocused(false), 200);
           }}
         />
@@ -245,16 +227,17 @@ export function SearchBar({ onSearch, mapRef }: Props) {
                     city: result.city,
                     state: result.state,
                     zipcode: result.zipcode
-                  }
-                  
-                  // Always pan to location when selecting from search
+                  };
+
                   setShouldCenterMap(true);
                   setSelectedProperty({
                     ...result,
                     address,
+                    distanceToCity: result.distanceToCity,
+                    durationToCity: result.durationToCity
                   });
                   setPropertyCardVisible(true);
-    
+
                   // Query map layers for additional data if map is available
                   if (mapRef?.current) {
                     const center = mapRef.current.project([result.longitude, result.latitude]);
@@ -265,9 +248,8 @@ export function SearchBar({ onSearch, mapRef }: Props) {
                       const feature = features[0];
                       const properties = feature.properties || {};
 
-                      // Combine Mapbox result with layer data
-                      setSelectedProperty({
-                        ...result,
+                      setSelectedProperty(prev => ({
+                        ...prev,
                         propertyId: properties?.Prop_ID,
                         ownerName: properties?.NAME_CARE ? `${properties.OWNER_NAME} ${properties.NAME_CARE}` : properties?.OWNER_NAME,
                         legalAreaUnits: properties?.LGL_AREA_U,
@@ -280,7 +262,7 @@ export function SearchBar({ onSearch, mapRef }: Props) {
                         fipsCode: properties?.FIPS,
                         county: properties?.COUNTY,
                         taxYear: properties?.TAX_YEAR ? parseInt(properties.TAX_YEAR) : undefined
-                      });
+                      }));
                     }
                   }
                   setIsLoadingProperty(false);
@@ -291,6 +273,11 @@ export function SearchBar({ onSearch, mapRef }: Props) {
                   <div className="text-base text-muted-foreground">
                     {[result.city, result.state, result.zipcode].filter(Boolean).join(', ')}
                   </div>
+                  {result.distanceToCity && (
+                    <div className="text-sm text-muted-foreground">
+                      {result.distanceToCity} ({result.durationToCity}) to {result.city}
+                    </div>
+                  )}
                 </div>
               </CommandItem>
             ))}
