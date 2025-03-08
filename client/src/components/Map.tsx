@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl';
-import ReactMapGL, { NavigationControl, GeolocateControl, Marker, Source, Layer } from 'react-map-gl';
+import ReactMapGL, { NavigationControl, GeolocateControl, Marker, Source, Layer, Popup } from 'react-map-gl';
 import { MeasurementLayer } from "./map/MeasurementLayer";
 import { MeasurementControls } from "./map/MeasurementControls";
 import { MeasurementCard } from "./map/MeasurementCard";
@@ -48,8 +48,8 @@ function DrawControl(props: DrawControlProps) {
   return null;
 }
 
-export default function PropertyMap({ 
-  parcels = [], 
+export default function PropertyMap({
+  parcels = [],
   onParcelSelect,
   loading = false
 }: PropertyMapProps) {
@@ -63,12 +63,14 @@ export default function PropertyMap({
   const mapRef = useRef<MapRef>(null);
   const drawRef = useRef<MapboxDraw>();
 
-  const { 
+  const {
     measurementMode,
     setMeasurementMode,
     addCompletedMeasurement,
     clearMeasurements,
-    setViewportCenter
+    setViewportCenter,
+    addMeasurementPoint, // Assuming this function exists
+    fetchPropertyDetails // Assuming this function exists
   } = useAppStore();
 
   // Get user's location on mount
@@ -128,7 +130,7 @@ export default function PropertyMap({
         }}
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
         mapStyle="mapbox://styles/mapbox/streets-v11"
-        style={{width: '100%', height: '100%'}}
+        style={{ width: '100%', height: '100%' }}
       >
         {/* Measurement Layer */}
         <MeasurementLayer />
@@ -147,9 +149,20 @@ export default function PropertyMap({
             key={parcel.id}
             latitude={Number(parcel.latitude)}
             longitude={Number(parcel.longitude)}
-            onClick={e => {
-              e.originalEvent.stopPropagation();
-              setSelectedParcel(parcel);
+            onClick={evt => {
+              if (measurementMode !== 'none') {
+                addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
+              } else {
+                if (mapRef.current) {
+                  const features = mapRef.current.queryRenderedFeatures(evt.point, {
+                    layers: ['layer'] // Assumes a layer named 'layer' exists
+                  });
+                  if (features.length > 0) {
+                    const feature = features[0];
+                    fetchPropertyDetails(evt.lngLat.lat, evt.lngLat.lng, feature, true);
+                  }
+                }
+              }
             }}
           >
             <div className="text-primary cursor-pointer">

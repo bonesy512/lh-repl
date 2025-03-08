@@ -20,7 +20,7 @@ export function MeasurementLayer() {
     // Check if we have any measurements to show at all
     const hasActivePoints = measurementPoints && Array.isArray(measurementPoints) && measurementPoints.length > 0;
     const hasCompletedMeasurements = completedMeasurements && completedMeasurements.length > 0;
-
+    
     if (!hasActivePoints && !hasCompletedMeasurements && measurementMode === 'none') return null;
 
     // Create point features for all active measurement points
@@ -81,7 +81,7 @@ export function MeasurementLayer() {
 
     // Create features for completed measurements
     const completedFeatures: any[] = [];
-
+    
     if (hasCompletedMeasurements) {
       completedMeasurements.forEach(measurement => {
         if (measurement.type === 'distance' && measurement.coordinates.length >= 2) {
@@ -94,7 +94,7 @@ export function MeasurementLayer() {
             },
             properties: { completed: true },
           });
-
+          
           // Points for the distance measurement
           measurement.coordinates.forEach(point => {
             completedFeatures.push({
@@ -113,7 +113,7 @@ export function MeasurementLayer() {
               polygonCoordinates[0][1] !== polygonCoordinates[polygonCoordinates.length-1][1]) {
             polygonCoordinates.push(polygonCoordinates[0]);
           }
-
+          
           // Polygon for area measurement
           completedFeatures.push({
             type: "Feature",
@@ -123,7 +123,7 @@ export function MeasurementLayer() {
             },
             properties: { completed: true },
           });
-
+          
           // Points for the area measurement
           measurement.coordinates.forEach(point => {
             completedFeatures.push({
@@ -138,12 +138,12 @@ export function MeasurementLayer() {
         }
       });
     }
-
+    
     // Combine all features
     const allFeatures = [...pointFeatures];
     if (mainFeature) allFeatures.push(mainFeature);
     if (completedFeatures.length > 0) allFeatures.push(...completedFeatures);
-
+    
     return {
       type: "FeatureCollection",
       features: allFeatures,
@@ -157,9 +157,9 @@ export function MeasurementLayer() {
       setCurrentMeasurement(null);
       return;
     }
-
+    
     let measurement: number | null = null;
-
+    
     // Create a feature for calculation only based on current active points
     if (measurementMode === "distance" && measurementPoints.length >= 1) {
       // For distance, create a LineString with current points plus viewport center
@@ -184,10 +184,10 @@ export function MeasurementLayer() {
       };
       measurement = turf.area(polygonFeature as any) * 0.000247105; // Convert to acres
     }
-
+    
     setCurrentMeasurement(measurement);
   }, [measurementPoints, viewportCenter, measurementMode]);
-
+  
 
   const geojson = getGeoJSON();
   if (!geojson) return null;
@@ -211,7 +211,7 @@ export function MeasurementLayer() {
         }}
         filter={["!has", "completed"]}
       />
-
+      
       {/* Completed measurement lines - for distance measurements */}
       <Layer
         id="measurement-line-completed"
@@ -227,7 +227,7 @@ export function MeasurementLayer() {
           ["has", "completed"]
         ]}
       />
-
+      
       {/* Completed measurement fills - for area measurements */}
       <Layer
         id="measurement-fill-completed"
@@ -242,7 +242,7 @@ export function MeasurementLayer() {
           ["has", "completed"]
         ]}
       />
-
+      
       {/* Completed measurement outlines - for polygons */}
       <Layer
         id="measurement-outline-completed"
@@ -258,6 +258,18 @@ export function MeasurementLayer() {
           ["has", "completed"]
         ]}
       />
+
+      {/* Polygon outline for area mode */}
+      {measurementMode === "area" && measurementPoints && measurementPoints.length >= 3 && (
+        <Layer
+          id="measurement-outline"
+          type="line"
+          paint={{
+            "line-color": "#ff0000",
+            "line-width": 2,
+          }}
+        />
+      )}
 
       {/* Active points */}
       <Layer

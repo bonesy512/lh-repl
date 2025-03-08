@@ -20,6 +20,7 @@ type MapState = {
   measurementMode: 'none' | 'distance' | 'area';
   setMeasurementMode: (mode: 'none' | 'distance' | 'area') => void;
   measurements: Measurement[];
+  completedMeasurements: Measurement[];
   addCompletedMeasurement: (measurement: Measurement) => void;
   clearMeasurements: () => void;
   clearCompletedMeasurements: () => void;
@@ -56,15 +57,16 @@ export const useAppStore = create<MapState>()(
 
       // Measurements
       measurements: [],
+      completedMeasurements: [],
       addCompletedMeasurement: (measurement) =>
         set((state) => ({
-          measurements: [...state.measurements, measurement],
+          completedMeasurements: [...state.completedMeasurements, measurement],
         })),
       clearMeasurements: () => set({ 
         measurementPoints: [],
         currentMeasurement: null
       }),
-      clearCompletedMeasurements: () => set({ measurements: [] }),
+      clearCompletedMeasurements: () => set({ completedMeasurements: [] }),
 
       // Measurement points
       measurementPoints: [],
