@@ -6,6 +6,8 @@ import { auth } from "@/lib/firebase";
 import { queryClient } from "./lib/queryClient";
 import { Navigation } from "@/components/Navigation";
 import Home from "@/pages/Home";
+import Features from "@/pages/Features";
+import Pricing from "@/pages/Pricing";
 import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
@@ -57,6 +59,8 @@ function Router() {
       {showNavigation && <Navigation />}
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/features" component={Features} />
+        <Route path="/pricing" component={Pricing} />
         <Route path="/login" component={Login} />
         <Route path="/dashboard">
           {user ? <Dashboard /> : () => {
