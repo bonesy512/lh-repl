@@ -15,13 +15,10 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { type Parcel } from "@shared/schema";
-import { auth } from "@/lib/firebase";
-import { useLocation } from "wouter";
-import { CreditCard, Users, Activity, Map } from "lucide-react";
+import { CreditCard, Users, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Dashboard() {
-  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
   const [activeDialog, setActiveDialog] = useState<"analysis" | "marketing" | null>(
@@ -64,27 +61,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">LandHacker</h1>
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground">
-              Credits: {user?.credits || 0}
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                auth.signOut();
-                navigate("/login");
-              }}
-            >
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Overview Cards */}
