@@ -46,17 +46,13 @@ export async function analyzeProperty(
   currentPrice?: number
 ): Promise<PropertyAnalysis> {
   try {
-    // Generate a safe cache key from the property details
-    const cacheKey = `analysis_${Math.abs(latitude)}_${Math.abs(longitude)}_${acres}`;
-
-    // Check cache first
-    const cachedResult = await getCachedAnalysis(cacheKey);
-    if (cachedResult && cachedResult.expiresAt > Date.now()) {
-      console.log('Using cached analysis');
-      return cachedResult.analysis;
-    }
-
-    console.log('No valid cache found, performing new analysis');
+    console.log('Starting property analysis:', {
+      address,
+      acres,
+      latitude,
+      longitude,
+      currentPrice
+    });
 
     // Get distance to nearest city
     const distanceInfo = await getDistanceToCity(latitude, longitude);
@@ -99,11 +95,9 @@ export async function analyzeProperty(
       analysis.distanceInfo = distanceInfo;
     }
 
-    // Cache the result
-    await cacheAnalysis(cacheKey, { analysis });
-
     return analysis;
   } catch (error: any) {
+    console.error('Analysis error:', error);
     throw new Error(`Failed to analyze property: ${error.message}`);
   }
 }
@@ -113,18 +107,6 @@ export async function generateMarketingDescription(
   targetAudience: string
 ): Promise<string> {
   try {
-    // Generate a safe cache key for marketing content
-    const cacheKey = `marketing_${propertyDetails.id}_${targetAudience.replace(/[^a-zA-Z0-9]/g, '_')}`;
-
-    // Check cache first
-    const cachedResult = await getCachedAnalysis(cacheKey);
-    if (cachedResult && cachedResult.expiresAt > Date.now()) {
-      console.log('Using cached marketing description');
-      return cachedResult.description;
-    }
-
-    console.log('No valid cache found, generating new marketing description');
-
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -140,12 +122,7 @@ export async function generateMarketingDescription(
       ]
     });
 
-    const description = response.choices[0].message.content || "";
-
-    // Cache the result
-    await cacheAnalysis(cacheKey, { description });
-
-    return description;
+    return response.choices[0].message.content || "";
   } catch (error: any) {
     throw new Error(`Failed to generate marketing description: ${error.message}`);
   }
