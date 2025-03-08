@@ -4,14 +4,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { queryClient } from "./lib/queryClient";
+import { Navigation } from "@/components/Navigation";
 import Home from "@/pages/Home";
 import Dashboard from "@/pages/Dashboard";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 import './App.css';
+import { useLocation } from "wouter";
 
 function Router() {
   const [user, setUser] = useState(auth.currentUser);
+  const [location] = useLocation();
 
   useEffect(() => {
     return auth.onAuthStateChanged((user) => {
@@ -47,18 +50,23 @@ function Router() {
     });
   }, []);
 
+  const showNavigation = location !== "/login";
+
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/login" component={Login} />
-      <Route path="/dashboard">
-        {user ? <Dashboard /> : () => {
-          window.location.href = "/login";
-          return null;
-        }}
-      </Route>
-      <Route component={NotFound} />
-    </Switch>
+    <>
+      {showNavigation && <Navigation />}
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/login" component={Login} />
+        <Route path="/dashboard">
+          {user ? <Dashboard /> : () => {
+            window.location.href = "/login";
+            return null;
+          }}
+        </Route>
+        <Route component={NotFound} />
+      </Switch>
+    </>
   );
 }
 

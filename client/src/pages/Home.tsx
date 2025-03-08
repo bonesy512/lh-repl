@@ -10,11 +10,12 @@ export default function Home() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-24 text-center">
         <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          Landhacker
           AI-Powered Land Investment
         </h1>
         <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Discover, analyze, and invest in land opportunities with confidence using
-          advanced AI technology and market insights.
+          Discover, analyze, and invest in land opportunities with confidence
+          using advanced AI technology and market insights.
         </p>
         <Button
           size="lg"
@@ -28,15 +29,20 @@ export default function Home() {
       {/* Pricing Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Simple, Transparent Pricing</h2>
+          <h2 className="text-3xl font-bold mb-4">
+            Simple, Transparent Pricing
+          </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Get started with our professional plan and scale your team as needed.
+            Get started with our professional plan and scale your team as
+            needed.
           </p>
         </div>
 
         <div className="max-w-md mx-auto">
           <div className="rounded-lg border bg-card p-8">
-            <h3 className="text-2xl font-bold text-center mb-2">Professional</h3>
+            <h3 className="text-2xl font-bold text-center mb-2">
+              Professional
+            </h3>
             <div className="text-center mb-6">
               <span className="text-4xl font-bold">$20</span>
               <span className="text-muted-foreground">/month</span>
@@ -97,8 +103,8 @@ export default function Home() {
             </div>
             <h3 className="text-xl font-semibold mb-2">Interactive Maps</h3>
             <p className="text-muted-foreground">
-              Explore properties with our interactive mapping interface featuring
-              detailed parcel information.
+              Explore properties with our interactive mapping interface
+              featuring detailed parcel information.
             </p>
           </div>
 
@@ -120,8 +126,8 @@ export default function Home() {
             </div>
             <h3 className="text-xl font-semibold mb-2">AI Analysis</h3>
             <p className="text-muted-foreground">
-              Get instant property valuations and insights powered by advanced AI
-              technology.
+              Get instant property valuations and insights powered by advanced
+              AI technology.
             </p>
           </div>
 
