@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import PropertyMap from "@/components/Map";
@@ -18,6 +18,7 @@ import { type Parcel } from "@shared/schema";
 import { CreditCard, Users, Activity, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/hooks/use-auth";
 
 interface User {
   id: number;
@@ -36,21 +37,30 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
   const [activeDialog, setActiveDialog] = useState<"analysis" | "marketing" | null>(null);
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const { user: authUser, isLoading: authLoading } = useAuth();
 
-  // Fetch user data
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !authUser) {
+      navigate("/auth");
+    }
+  }, [authUser, authLoading, navigate]);
+
+  // Only proceed with other queries if authenticated
   const { data: user, isLoading: loadingUser } = useQuery<User>({
     queryKey: ["/api/user"],
+    enabled: !!authUser,
   });
 
-  // Fetch parcels data
   const { data: parcels = [], isLoading: loadingParcels, error: parcelsError } = useQuery<Parcel[]>({
     queryKey: ["/api/parcels"],
+    enabled: !!authUser,
   });
 
-  // Fetch invoices data
   const { data: invoices = [], isLoading: loadingInvoices } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
+    enabled: !!authUser,
   });
 
   function handleParcelSelect(parcel: Parcel) {
@@ -76,7 +86,7 @@ export default function Dashboard() {
   }
 
   // Show loading state
-  if (loadingUser || loadingParcels) {
+  if (authLoading || loadingUser || loadingParcels) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -85,12 +95,18 @@ export default function Dashboard() {
   }
 
   // Show error state
+  if (!authUser) {
+    return null; // Will be redirected by useEffect
+  }
+
   if (parcelsError) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Alert variant="destructive">
           <AlertDescription>
-            Failed to load dashboard data. Please try again later.
+            {parcelsError instanceof Error 
+              ? parcelsError.message 
+              : "Failed to load dashboard data. Please try again later."}
           </AlertDescription>
         </Alert>
       </div>
