@@ -21,6 +21,7 @@ interface GeneratePriceProps {
 export function GeneratePrice({ selectedProperty, onAnalysisComplete }: GeneratePriceProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [predictedPrice, setPredictedPrice] = useState<{
     predicted_price: string;
     confidence_score: string;
@@ -60,6 +61,7 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
   async function handleGenerate() {
     setIsGenerating(true);
     setShowAnalysis(true);
+    setError(null);
 
     try {
       // Get acre prices for properties in the area
@@ -77,6 +79,8 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
       }
 
       const acrePricesData = await acrePricesResponse.json();
+      console.log("Received acre prices data:", acrePricesData);
+
       if (!acrePricesData.prices || acrePricesData.prices.length === 0) {
         toast({
           title: "No Comparable Properties",
@@ -95,6 +99,8 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
         selectedProperty.marketValue || selectedProperty.price
       );
 
+      console.log("Received analysis:", analysis);
+
       setPredictedPrice({
         predicted_price: `$${analysis.estimatedValue.toLocaleString()}`,
         confidence_score: `${(analysis.confidenceScore * 100).toFixed(0)}`,
@@ -108,12 +114,15 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
         creditsUsed: 50, 
       });
 
-      onAnalysisComplete?.(analysis);
+      if (onAnalysisComplete) {
+        onAnalysisComplete(analysis);
+      }
     } catch (error: any) {
       console.error("Error generating price:", error);
+      setError(error.message || "Failed to generate analysis");
       toast({
         title: "Analysis Failed",
-        description: error.message,
+        description: error.message || "Failed to generate analysis",
       });
     } finally {
       setIsFetchingAcrePrices(false);
@@ -126,6 +135,12 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
     <div className="space-y-8 w-full max-w-[100%] overflow-hidden">
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Generate Price</h3>
+        {error && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         {!showAnalysis && (
           <div className="flex flex-col items-center gap-4">
             {userProfile?.credits === 0 && (
@@ -149,7 +164,14 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
                 disabled={isGenerating || userProfile?.credits === 0 || isLoadingProfile}
                 className="w-full max-w-sm"
               >
-                {isGenerating ? "Generating..." : "Generate"}
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Generate"
+                )}
               </Button>
             )}
           </div>
@@ -201,7 +223,7 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
             </div>
             <div className="p-6">
               <p className="text-sm text-muted-foreground">
-                Unable to find properties for sale nearby to estimate price.
+                Unable to find properties for sale nearby to estimate price. The AI analysis will proceed with estimated values.
               </p>
             </div>
           </div>
@@ -228,7 +250,7 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
                     {acrePrices.map((property, index) => (
                       <TableRow key={index} className="hover:bg-transparent">
                         <TableCell className="font-medium break-words whitespace-normal">
-                          {property.address || 'Unknown'}
+                          {property.address?.streetAddress || 'Unknown'}
                         </TableCell>
                         <TableCell className="text-right">
                           {property.acre?.toLocaleString() || '-'}
@@ -253,38 +275,42 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
 
       {/* Predicted Price */}
       {showAnalysis && (
-        isPredicting || isGenerating ? (
+        isPredicting ? (
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div className="flex items-center gap-2 p-4 border-b">
               <div className="h-6 w-6 flex items-center justify-center rounded-full bg-primary/10">
                 <Loader2 className="h-4 w-4 animate-spin" />
               </div>
-              <h4 className="text-base font-semibold">Predicting Price</h4>
+              <h4 className="text-base font-semibold">Generating AI Analysis</h4>
             </div>
             <div className="p-6">
               <p className="text-sm text-muted-foreground">
-                Analyzing market data and comparable properties...
+                Analyzing property data and market trends...
               </p>
             </div>
           </div>
-        ) : predictedPrice && (
+        ) : predictedPrice ? (
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
             <div className="flex items-center gap-2 p-4 border-b">
               <div className="h-6 w-6 flex items-center justify-center rounded-full bg-primary/10">
                 <DollarSign className="h-4 w-4" />
               </div>
-              <h4 className="text-base font-semibold">Predicted Price</h4>
+              <h4 className="text-base font-semibold">AI Analysis Results</h4>
             </div>
             <div className="p-6 space-y-4">
               <div className="flex flex-col items-center gap-2 text-center">
                 <span className="text-3xl font-bold">{predictedPrice.predicted_price}</span>
+                <Badge variant="outline">
+                  Confidence: {predictedPrice.confidence_score}%
+                </Badge>
               </div>
-              <div className="prose prose-invert max-w-none text-sm overflow-x-auto overflow-y-visible break-words">
+              <Separator />
+              <div className="prose prose-sm dark:prose-invert max-w-none">
                 <ReactMarkdown>{predictedPrice.reasoning}</ReactMarkdown>
               </div>
             </div>
           </div>
-        )
+        ) : null
       )}
 
       {/* Share and Regenerate Buttons */}
@@ -295,7 +321,14 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
             onClick={handleGenerate}
             disabled={isGenerating || userProfile?.credits === 0 || userProfile?.credits < 50 || isLoadingProfile}
           >
-            {isGenerating ? "Regenerating..." : "Regenerate"}
+            {isGenerating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Regenerating...
+              </>
+            ) : (
+              "Regenerate"
+            )}
           </Button>
           <Button
             onClick={async () => {
@@ -308,10 +341,7 @@ export function GeneratePrice({ selectedProperty, onAnalysisComplete }: Generate
                   url: shareUrl,
                 });
               } catch (error: any) {
-                console.error('Error sharing:', error);
-                if (error.name === 'NotSupportedError') {
-                  console.log('Share URL:', shareUrl);
-                }
+                console.log('Share URL:', shareUrl);
               }
             }}
           >

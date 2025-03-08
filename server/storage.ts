@@ -133,6 +133,10 @@ export class DatabaseStorage implements IStorage {
       zipCode
     });
 
+    // Use the first 3 digits of zipcode for broader area search
+    const zipPrefix = zipCode.substring(0, 3);
+    console.log("Using zip prefix for search:", zipPrefix);
+
     const query = await db
       .select({
         id: parcels.id,
@@ -140,16 +144,20 @@ export class DatabaseStorage implements IStorage {
         price: parcels.price,
         acres: parcels.acres,
         gisArea: sql<number>`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres})`,
-        marketValue: sql<number>`COALESCE((${parcels.details}::jsonb->>'marketValue')::numeric, ${parcels.price})`
+        marketValue: sql<number>`COALESCE((${parcels.details}::jsonb->>'marketValue')::numeric, ${parcels.price})`,
+        fipsCode: sql<string>`${parcels.details}::jsonb->>'fipsCode'`,
+        county: sql<string>`${parcels.details}::jsonb->>'county'`,
+        landValue: sql<number>`(${parcels.details}::jsonb->>'landValue')::numeric`,
+        improvementValue: sql<number>`(${parcels.details}::jsonb->>'improvementValue')::numeric`
       })
       .from(parcels)
       .where(
         and(
-          // Match city (case insensitive)
+          // More flexible city matching (case insensitive)
           sql`LOWER(${parcels.address}::jsonb->>'city') = ${city.toLowerCase()}`,
-          // Match zip code (with some flexibility for nearby areas)
-          sql`${parcels.address}::jsonb->>'zipcode' LIKE ${zipCode.substring(0, 3) + '%'}`,
-          // Acres within range (allow some flexibility)
+          // Use zip prefix for broader area search
+          sql`${parcels.address}::jsonb->>'zipcode' LIKE ${zipPrefix + '%'}`,
+          // Flexible acre range (within 50% to 200% of target)
           sql`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) > ${acres * 0.5}`,
           sql`COALESCE((${parcels.details}::jsonb->>'gisArea')::numeric, ${parcels.acres}) < ${acres * 2}`,
           // Must have either market value or price
@@ -165,7 +173,12 @@ export class DatabaseStorage implements IStorage {
       address: typeof property.address === 'string' ? JSON.parse(property.address) : property.address,
       price: property.marketValue || property.price,
       acre: property.gisArea || property.acres,
-      pricePerAcre: (property.marketValue || property.price) / (property.gisArea || property.acres)
+      pricePerAcre: (property.marketValue || property.price) / (property.gisArea || property.acres),
+      // Include additional GIS data
+      fipsCode: property.fipsCode,
+      county: property.county,
+      landValue: property.landValue,
+      improvementValue: property.improvementValue
     }));
 
     console.log(`Found ${results.length} similar properties:`, results);
