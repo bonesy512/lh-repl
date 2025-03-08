@@ -1,25 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { SavedQuery, UserProfile } from './firebase';
-
-type Measurement = {
-  id: string;
-  type: 'distance' | 'area';
-  value?: number;
-  coordinates: number[][];
-};
+import { Measurement, MeasurementMode, MeasurementUnits } from './store-types';
 
 type MapState = {
   selectedProperty: any | null;
   setSelectedProperty: (property: any | null) => void;
   isLoadingProperty: boolean;
   setIsLoadingProperty: (loading: boolean) => void;
-  isStyleLoading: boolean;
-  setIsStyleLoading: (loading: boolean) => void;
   shouldCenterMap: boolean;
   setShouldCenterMap: (center: boolean) => void;
-  measurementMode: 'none' | 'distance' | 'area';
-  setMeasurementMode: (mode: 'none' | 'distance' | 'area') => void;
+  measurementMode: MeasurementMode;
+  setMeasurementMode: (mode: MeasurementMode) => void;
+  measurementUnits: MeasurementUnits;
+  setMeasurementUnits: (units: MeasurementUnits) => void;
   measurements: Measurement[];
   completedMeasurements: Measurement[];
   addCompletedMeasurement: (measurement: Measurement) => void;
@@ -51,8 +45,6 @@ export const useAppStore = create<MapState>()(
       // Loading states
       isLoadingProperty: false,
       setIsLoadingProperty: (loading) => set({ isLoadingProperty: loading }),
-      isStyleLoading: true,
-      setIsStyleLoading: (loading) => set({ isStyleLoading: loading }),
 
       // Map centering
       shouldCenterMap: false,
@@ -61,6 +53,10 @@ export const useAppStore = create<MapState>()(
       // Measurement mode
       measurementMode: 'none',
       setMeasurementMode: (mode) => set({ measurementMode: mode }),
+
+      // Measurement units
+      measurementUnits: 'metric',
+      setMeasurementUnits: (units) => set({ measurementUnits: units }),
 
       // Measurements
       measurements: [],
@@ -111,6 +107,7 @@ export const useAppStore = create<MapState>()(
       partialize: (state) => ({
         mapStyle: state.mapStyle,
         viewportCenter: state.viewportCenter,
+        measurementUnits: state.measurementUnits,
       }),
     }
   )
