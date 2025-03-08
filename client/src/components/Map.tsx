@@ -21,35 +21,6 @@ interface PropertyMapProps {
   onViewMore?: () => void;
 }
 
-interface DrawControlProps {
-  displayControlsDefault: boolean;
-  controls: {
-    point: boolean;
-    line_string: boolean;
-    polygon: boolean;
-    trash: boolean;
-  };
-  defaultMode?: string;
-  onCreate?: (e: { features: any[] }) => void;
-  onUpdate?: (e: { features: any[] }) => void;
-  onDelete?: () => void;
-  drawRef: React.MutableRefObject<MapboxDraw | undefined>;
-}
-
-function DrawControl(props: DrawControlProps) {
-  useEffect(() => {
-    if (!props.drawRef.current) {
-      props.drawRef.current = new MapboxDraw({
-        displayControlsDefault: props.displayControlsDefault,
-        controls: props.controls,
-        defaultMode: props.defaultMode
-      });
-    }
-  }, []);
-
-  return null;
-}
-
 export default function PropertyMap({
   parcels = [],
   onParcelSelect,
@@ -64,7 +35,6 @@ export default function PropertyMap({
 
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
   const mapRef = useRef<MapRef>(null);
-  const drawRef = useRef<MapboxDraw>();
 
   const {
     measurementMode,
@@ -76,27 +46,23 @@ export default function PropertyMap({
     propertyCardVisible,
     selectedProperty,
     setPropertyCardVisible,
-    setSelectedProperty
+    setSelectedProperty,
+    shouldCenterMap,
+    setShouldCenterMap,
+    setIsLoadingProperty
   } = useAppStore();
 
-  // Get user's location on mount
+  // Center map when requested (e.g. after search)
   useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setViewport(prev => ({
-            ...prev,
-            longitude: position.coords.longitude,
-            latitude: position.coords.latitude,
-            zoom: 14
-          }));
-        },
-        (error) => {
-          console.warn('Geolocation error:', error.message);
-        }
-      );
+    if (shouldCenterMap && selectedProperty) {
+      setViewport({
+        latitude: selectedProperty.latitude,
+        longitude: selectedProperty.longitude,
+        zoom: 14
+      });
+      setShouldCenterMap(false);
     }
-  }, []);
+  }, [shouldCenterMap, selectedProperty]);
 
   if (!import.meta.env.VITE_MAPBOX_TOKEN) {
     return (
@@ -186,7 +152,9 @@ export default function PropertyMap({
                     state: parcel.state,
                     zipcode: parcel.zipcode
                   },
-                  ownerName: parcel.ownerName
+                  ownerName: parcel.ownerName,
+                  latitude: Number(parcel.latitude),
+                  longitude: Number(parcel.longitude)
                 });
                 setPropertyCardVisible(true);
                 if (onParcelSelect) {
@@ -243,30 +211,6 @@ export default function PropertyMap({
             </div>
           </Popup>
         )}
-
-        {/* Draw Control for Measurements */}
-        <DrawControl
-          displayControlsDefault={false}
-          controls={{
-            point: false,
-            line_string: true,
-            polygon: true,
-            trash: true
-          }}
-          defaultMode={measurementMode === 'distance' ? 'draw_line_string' : 'draw_polygon'}
-          onCreate={e => {
-            const feature = e.features[0];
-            if (feature) {
-              addCompletedMeasurement({
-                id: feature.id,
-                type: feature.geometry.type === 'LineString' ? 'distance' : 'area',
-                coordinates: feature.geometry.coordinates
-              });
-            }
-          }}
-          onDelete={clearMeasurements}
-          drawRef={drawRef}
-        />
       </ReactMapGL>
     </div>
   );
