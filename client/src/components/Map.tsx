@@ -1,14 +1,51 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl';
-import ReactMapGL, { Marker, Popup } from 'react-map-gl';
+import ReactMapGL, { NavigationControl, GeolocateControl, Marker, Source, Layer } from 'react-map-gl';
+import { MeasurementLayer } from "./map/MeasurementLayer";
+import { MeasurementControls } from "./map/MeasurementControls";
+import { MeasurementCard } from "./map/MeasurementCard";
+import MapboxDraw from "@mapbox/mapbox-gl-draw";
+import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import type { Parcel } from '@shared/schema';
+import { useAppStore } from "@/utils/store";
 
 interface PropertyMapProps {
   parcels?: Parcel[];
   onParcelSelect?: (parcel: Parcel) => void;
   loading?: boolean;
+}
+
+// Custom control for MapboxDraw
+interface DrawControlProps {
+  displayControlsDefault: boolean;
+  controls: {
+    point: boolean;
+    line_string: boolean;
+    polygon: boolean;
+    trash: boolean;
+  };
+  defaultMode?: string;
+  onCreate?: (e: { features: any[] }) => void;
+  onUpdate?: (e: { features: any[] }) => void;
+  onDelete?: () => void;
+  drawRef: React.MutableRefObject<MapboxDraw | undefined>;
+}
+
+function DrawControl(props: DrawControlProps) {
+  useEffect(() => {
+    if (!props.drawRef.current) {
+      props.drawRef.current = new MapboxDraw({
+        displayControlsDefault: props.displayControlsDefault,
+        controls: props.controls,
+        defaultMode: props.defaultMode
+      });
+    }
+  }, []);
+
+  return null;
 }
 
 export default function PropertyMap({ 
@@ -24,6 +61,34 @@ export default function PropertyMap({
 
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
   const mapRef = useRef<MapRef>(null);
+  const drawRef = useRef<MapboxDraw>();
+
+  const { 
+    measurementMode,
+    setMeasurementMode,
+    addCompletedMeasurement,
+    clearMeasurements,
+    setViewportCenter
+  } = useAppStore();
+
+  // Get user's location on mount
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setViewport(prev => ({
+            ...prev,
+            longitude: position.coords.longitude,
+            latitude: position.coords.latitude,
+            zoom: 14
+          }));
+        },
+        (error) => {
+          console.warn('Geolocation error:', error.message);
+        }
+      );
+    }
+  }, []);
 
   if (!import.meta.env.VITE_MAPBOX_TOKEN) {
     return (
@@ -43,14 +108,40 @@ export default function PropertyMap({
 
   return (
     <div className="w-full h-[600px] relative">
+      {/* Measurement Controls */}
+      <div className="absolute bottom-[175px] left-2.5 z-[1]">
+        <MeasurementControls />
+      </div>
+
+      {measurementMode !== 'none' && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl pl-8 z-[2]">
+          <MeasurementCard />
+        </div>
+      )}
+
       <ReactMapGL
         ref={mapRef}
         {...viewport}
-        onMove={evt => setViewport(evt.viewState)}
+        onMove={evt => {
+          setViewport(evt.viewState);
+          setViewportCenter([evt.viewState.longitude, evt.viewState.latitude]);
+        }}
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
         mapStyle="mapbox://styles/mapbox/streets-v11"
         style={{width: '100%', height: '100%'}}
       >
+        {/* Measurement Layer */}
+        <MeasurementLayer />
+
+        {/* Map Controls */}
+        <NavigationControl position="bottom-left" />
+        <GeolocateControl
+          position="bottom-left"
+          positionOptions={{ enableHighAccuracy: true }}
+          trackUserLocation={true}
+        />
+
+        {/* Property Markers */}
         {parcels.map((parcel) => (
           <Marker
             key={parcel.id}
@@ -79,6 +170,7 @@ export default function PropertyMap({
           </Marker>
         ))}
 
+        {/* Selected Property Popup */}
         {selectedParcel && (
           <Popup
             latitude={Number(selectedParcel.latitude)}
@@ -108,6 +200,30 @@ export default function PropertyMap({
             </div>
           </Popup>
         )}
+
+        {/* Draw Control for Measurements */}
+        <DrawControl
+          displayControlsDefault={false}
+          controls={{
+            point: false,
+            line_string: true,
+            polygon: true,
+            trash: true
+          }}
+          defaultMode={measurementMode === 'distance' ? 'draw_line_string' : 'draw_polygon'}
+          onCreate={e => {
+            const feature = e.features[0];
+            if (feature) {
+              addCompletedMeasurement({
+                id: feature.id,
+                type: feature.geometry.type === 'LineString' ? 'distance' : 'area',
+                coordinates: feature.geometry.coordinates
+              });
+            }
+          }}
+          onDelete={clearMeasurements}
+          drawRef={drawRef}
+        />
       </ReactMapGL>
     </div>
   );
