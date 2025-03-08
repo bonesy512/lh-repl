@@ -17,7 +17,9 @@ export function PropertyCard({ onViewMore }: Props) {
     selectedProperty, 
     userProfile,
     addRunningProperty,
-    runningProperties 
+    runningProperties,
+    setPropertyForAnalysis,
+    setAnalysisDialogOpen
   } = useAppStore();
 
   const checkSubscription = () => {
@@ -65,12 +67,9 @@ export function PropertyCard({ onViewMore }: Props) {
       console.log("Adding property to analysis queue:", address);
       addRunningProperty(address);
 
-      // Open analysis dialog with property data
-      const event = new CustomEvent("open-analysis-dialog", { 
-        detail: { property: selectedProperty }
-      });
-      console.log("Dispatching analysis dialog event:", event);
-      window.dispatchEvent(event);
+      // Update analysis state directly in store
+      setPropertyForAnalysis(selectedProperty);
+      setAnalysisDialogOpen(true);
     } else {
       handleSubscriptionError();
     }
@@ -121,7 +120,6 @@ export function PropertyCard({ onViewMore }: Props) {
 
         {isLoadingProperty ? (
           <div className="space-y-4">
-            {/* Address */}
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <HomeIcon className="w-4 h-4" />
@@ -130,7 +128,6 @@ export function PropertyCard({ onViewMore }: Props) {
               <Skeleton className="h-5 w-full" />
             </div>
 
-            {/* Owner */}
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <UserIcon className="w-4 h-4" />
@@ -141,7 +138,6 @@ export function PropertyCard({ onViewMore }: Props) {
           </div>
         ) : selectedProperty ? (
           <div className="space-y-4">
-            {/* Address */}
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <HomeIcon className="w-4 h-4" />
@@ -152,7 +148,6 @@ export function PropertyCard({ onViewMore }: Props) {
               </p>
             </div>
 
-            {/* Owner */}
             {selectedProperty.ownerName && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -165,7 +160,6 @@ export function PropertyCard({ onViewMore }: Props) {
               </div>
             )}
 
-            {/* Analysis Status */}
             {isAnalyzing && (
               <div className="text-sm text-muted-foreground animate-pulse">
                 Analyzing property...

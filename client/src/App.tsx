@@ -6,6 +6,7 @@ import { auth } from "@/lib/firebase";
 import { queryClient } from "./lib/queryClient";
 import { Navigation } from "@/components/Navigation";
 import { AnalysisDialog } from "@/components/AnalysisDialog";
+import { useAppStore } from "@/utils/store";
 import Home from "@/pages/Home";
 import Features from "@/pages/Features";
 import Pricing from "@/pages/Pricing";
@@ -21,8 +22,12 @@ import './App.css';
 
 function Router() {
   const [user, setUser] = useState(auth.currentUser);
-  const [analysisDialogOpen, setAnalysisDialogOpen] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState<PropertyDetailsResponse | null>(null);
+  const { 
+    setPropertyForAnalysis, 
+    setAnalysisDialogOpen,
+    analysisDialogOpen,
+    propertyForAnalysis 
+  } = useAppStore();
 
   useEffect(() => {
     return auth.onAuthStateChanged((user) => {
@@ -60,7 +65,7 @@ function Router() {
       console.log("Received analysis dialog event");
       const customEvent = event as CustomEvent<{ property: PropertyDetailsResponse }>;
       console.log("Property data:", customEvent.detail.property);
-      setSelectedProperty(customEvent.detail.property);
+      setPropertyForAnalysis(customEvent.detail.property);
       setAnalysisDialogOpen(true);
     };
 
@@ -90,9 +95,9 @@ function Router() {
         isOpen={analysisDialogOpen} 
         onClose={() => {
           setAnalysisDialogOpen(false);
-          setSelectedProperty(null);
+          setPropertyForAnalysis(null);
         }}
-        property={selectedProperty}
+        property={propertyForAnalysis}
       />
     </>
   );
