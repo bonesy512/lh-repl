@@ -11,6 +11,8 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
 }
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
 // Initialize Firebase Admin
 console.log('Initializing Firebase Admin...');
 try {
@@ -42,18 +44,27 @@ async function verifyFirebaseToken(req: any, res: any, next: any) {
     }
 
     const token = authHeader.split('Bearer ')[1];
+    if (!token || token === 'undefined' || token === 'null') {
+      console.error("Invalid token format:", token);
+      return res.status(401).json({ message: "Invalid token format" });
+    }
+
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
+      if (!decodedToken || !decodedToken.uid) {
+        console.error("Token verified but missing UID");
+        return res.status(401).json({ message: "Invalid token content" });
+      }
       req.user = decodedToken;
       console.log("Firebase token verified successfully for user:", decodedToken.uid);
       next();
     } catch (error: any) {
-      console.error('Firebase token verification failed:', error.message, error.stack); //More detailed logging
-      const errorMessage = error.message || "Invalid token"; //Handle potential null message
+      console.error('Firebase token verification failed:', error.message, error.stack);
+      const errorMessage = error.message || "Invalid token";
       return res.status(401).json({ message: errorMessage });
     }
   } catch (error: any) {
-    console.error('Error in auth middleware:', error.message, error.stack); //More detailed logging
+    console.error('Error in auth middleware:', error.message, error.stack);
     res.status(401).json({ message: "Unauthorized" });
   }
 }

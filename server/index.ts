@@ -15,8 +15,23 @@ console.log('Starting server initialization...');
 const execAsync = promisify(exec);
 
 const app = express();
-app.use(express.json());
+
+// Parse JSON for all routes except the Stripe webhook
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/webhook') {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
+
 app.use(express.urlencoded({ extended: false }));
+
+// Add raw body parser for Stripe webhook
+app.post('/api/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
+  req.body = req.body.toString();
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

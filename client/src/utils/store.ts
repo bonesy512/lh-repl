@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist } from 'zustand/middleware/persist';
 import { SavedQuery, UserProfile } from './firebase';
 import { Measurement, MeasurementMode, MeasurementUnits } from './store-types';
 import type { PropertyDetailsResponse } from 'types';
