@@ -53,11 +53,6 @@ export default function Dashboard() {
   }, [authUser, authLoading, navigate]);
 
   // Only proceed with other queries if authenticated
-  const { data: user, isLoading: loadingUser, error: userError } = useQuery<User>({
-    queryKey: ["/api/user"],
-    enabled: !!authUser,
-  });
-
   const { data: parcels = [], isLoading: loadingParcels, error: parcelsError } = useQuery<Parcel[]>({
     queryKey: ["/api/parcels"],
     enabled: !!authUser,
@@ -69,12 +64,10 @@ export default function Dashboard() {
   });
 
   console.log("Query states:", {
-    user,
-    loadingUser,
-    userError,
-    parcelsCount: parcels.length,
+    user: authUser,
     loadingParcels,
     parcelsError,
+    parcelsCount: parcels.length,
     invoicesCount: invoices.length,
     loadingInvoices
   });
@@ -85,7 +78,7 @@ export default function Dashboard() {
 
   function handleAnalyze() {
     if (!selectedParcel) return;
-    if (!user?.credits || user.credits < 1) {
+    if (!authUser?.credits || authUser.credits < 1) {
       toast({
         title: "Insufficient Credits",
         description: "Please purchase more credits to perform analysis.",
@@ -102,7 +95,7 @@ export default function Dashboard() {
   }
 
   // Show loading state
-  if (authLoading || loadingUser || loadingParcels) {
+  if (authLoading || loadingParcels) {
     console.log("Showing loading state");
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -115,21 +108,6 @@ export default function Dashboard() {
   if (!authUser) {
     console.log("No auth user, returning null for redirect");
     return null; // Will be redirected by useEffect
-  }
-
-  if (userError) {
-    console.error("User data error:", userError);
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Alert variant="destructive">
-          <AlertDescription>
-            {userError instanceof Error 
-              ? userError.message 
-              : "Failed to load user data. Please try again later."}
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
   }
 
   if (parcelsError) {
@@ -161,7 +139,7 @@ export default function Dashboard() {
               <CreditCard className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{user?.credits || 0}</div>
+              <div className="text-2xl font-bold">{authUser?.credits || 0}</div>
               <p className="text-xs text-muted-foreground">
                 Used for AI analysis and marketing
               </p>
