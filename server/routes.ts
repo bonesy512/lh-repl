@@ -32,16 +32,12 @@ try {
   throw error;
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-  typescript: true,
-});
-
 // Middleware to verify Firebase token
 async function verifyFirebaseToken(req: any, res: any, next: any) {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
+      console.error("Unauthorized: Missing or invalid Bearer token in header.");
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -49,13 +45,15 @@ async function verifyFirebaseToken(req: any, res: any, next: any) {
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
       req.user = decodedToken;
+      console.log("Firebase token verified successfully for user:", decodedToken.uid);
       next();
-    } catch (error) {
-      console.error('Firebase token verification failed:', error);
-      return res.status(401).json({ message: "Invalid token" });
+    } catch (error: any) {
+      console.error('Firebase token verification failed:', error.message, error.stack); //More detailed logging
+      const errorMessage = error.message || "Invalid token"; //Handle potential null message
+      return res.status(401).json({ message: errorMessage });
     }
-  } catch (error) {
-    console.error('Error in auth middleware:', error);
+  } catch (error: any) {
+    console.error('Error in auth middleware:', error.message, error.stack); //More detailed logging
     res.status(401).json({ message: "Unauthorized" });
   }
 }
@@ -72,12 +70,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
+        console.log("Creating new user:", data); // Add logging for user creation
         user = await storage.createUser(data);
+        console.log("New user created:", user); //Add logging after user creation
+      } else {
+        console.log("User already exists:", user); //Add logging for existing user
       }
 
       res.json(user);
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('Login error:', error.message, error.stack); //More detailed logging
       res.status(400).json({ message: error.message });
     }
   });
@@ -263,7 +265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ prices: similarProperties });
     } catch (error: any) {
-      console.error('Error getting acre prices:', error);
+      console.error('Error getting acre prices:', error.message, error.stack); //More detailed logging
       res.status(400).json({ message: error.message });
     }
   });

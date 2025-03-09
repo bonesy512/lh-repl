@@ -31,13 +31,26 @@ export default function Login() {
 
       // Create or verify user in our backend
       console.log("Verifying user with backend...");
-      await apiRequest("POST", "/api/auth/login", {
+      console.log("Making POST request to /api/auth/login", {
+        firebaseUid: user.uid,
+        email: user.email,
+        username: user.displayName
+      });
+
+      const response = await apiRequest("POST", "/api/auth/login", {
         firebaseUid: user.uid,
         email: user.email,
         username: user.displayName,
       });
-      console.log("Backend verification successful");
 
+      const userData = await response.json();
+      console.log("Backend authentication response:", userData);
+
+      if (!userData) {
+        throw new Error("Failed to authenticate with backend");
+      }
+
+      console.log("Backend verification successful");
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Login failed:", error);
