@@ -3,7 +3,7 @@ import { useAppStore } from "@/utils/store";
 import { useState, useEffect, useRef } from "react";
 import type { MapRef } from 'react-map-gl';
 import { Loader2 } from 'lucide-react';
-import type { PropertyDetailsResponse, Address } from 'types';
+import type { PropertyDetailsResponse } from 'types';
 
 interface Coordinates {
   latitude: number;
@@ -146,7 +146,6 @@ export function SearchBar({ onSearch, mapRef }: Props) {
         return;
       }
 
-      // Process results and get distances
       const transformedResults = await Promise.all(data.features.map(async (feature, index) => {
         const cityContext = feature.context?.find(ctx => ctx.id.startsWith('place.'));
         const stateContext = feature.context?.find(ctx => ctx.id.startsWith('region.'));
@@ -188,7 +187,6 @@ export function SearchBar({ onSearch, mapRef }: Props) {
           console.error('Error fetching distance:', error);
         }
 
-        // Get price estimates
         try {
           const priceResponse = await fetch('/api/scrape/estimates', {
             method: 'POST',
@@ -222,27 +220,31 @@ export function SearchBar({ onSearch, mapRef }: Props) {
 
   return (
     <div className="relative w-full">
-      <Command className="w-full overflow-hidden rounded-lg shadow-lg" shouldFilter={false}>
+      <Command className="w-full overflow-visible rounded-lg border shadow-lg">
         <CommandInput
           placeholder="Search by address"
           value={query}
           onValueChange={setQuery}
           disabled={loading}
-          className="h-10 bg-background/90 backdrop-blur-sm w-full text-base px-4"
+          className="h-12 md:h-10 bg-background/95 backdrop-blur-sm w-full text-base px-4 rounded-lg focus:ring-2 focus:ring-primary/50"
           onFocus={() => setFocused(true)}
           onBlur={() => {
             setTimeout(() => setFocused(false), 200);
           }}
         />
         {focused && (
-          <CommandList className="max-h-[300px] overflow-y-auto">
+          <CommandList className="absolute top-full left-0 right-0 mt-1 max-h-[300px] overflow-y-auto bg-background/95 backdrop-blur-sm rounded-lg border shadow-lg">
             <CommandEmpty>
               {loading ? (
-                <div className="flex items-center gap-2 p-4">
+                <div className="flex items-center justify-center gap-2 p-4">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Searching...
+                  <span>Searching...</span>
                 </div>
-              ) : 'No results found.'}
+              ) : (
+                <div className="p-4 text-center text-muted-foreground">
+                  No results found
+                </div>
+              )}
             </CommandEmpty>
             <CommandGroup>
               {searchResults.map((result) => (
@@ -257,7 +259,7 @@ export function SearchBar({ onSearch, mapRef }: Props) {
                     setPropertyCardVisible(true);
                     setIsLoadingProperty(false);
                   }}
-                  className="px-4 py-3"
+                  className="p-4 hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex flex-col gap-1">
                     <div className="font-medium text-base">

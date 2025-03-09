@@ -99,8 +99,8 @@ export default function PropertyMap({
 
   return (
     <div className="w-full h-[600px] relative">
-      {/* Search Bar */}
-      <div className="absolute top-4 left-0 right-0 mx-4 md:left-4 md:right-auto md:mx-0 z-[3] md:w-[400px]">
+      {/* Search Bar - Updated with better mobile responsiveness */}
+      <div className="absolute top-0 left-0 right-0 p-4 md:top-4 md:left-4 md:right-auto md:p-0 z-[3] md:w-[400px]">
         <SearchBar mapRef={mapRef} />
       </div>
 
@@ -116,9 +116,9 @@ export default function PropertyMap({
         </div>
       )}
 
-      {/* Property Card */}
+      {/* Property Card - Updated to match search bar responsive styling */}
       {propertyCardVisible && selectedProperty && (
-        <div className="absolute top-4 right-0 left-0 mx-4 md:right-4 md:left-auto md:mx-0 z-[3] md:w-[400px]">
+        <div className="absolute top-0 right-0 left-0 p-4 md:top-4 md:right-4 md:left-auto md:p-0 z-[3] md:w-[400px]">
           <PropertyCard parcel={selectedParcel} onViewMore={onViewMore} />
         </div>
       )}
