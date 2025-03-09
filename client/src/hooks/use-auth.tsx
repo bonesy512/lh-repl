@@ -157,9 +157,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  const { toast } = useToast();
+
+  const {
+    data: user,
+    error,
+    isLoading,
+  } = useQuery<User | null>({
+    queryKey: ["/api/user"],
+    queryFn: async () => {
+      console.log("Fetching user data...");
+      try {
+        const response = await fetch("/api/user", {
+          credentials: "include",
+        });
+        if (response.status === 401) {
+          console.log("User not authenticated");
+          return null;
+        }
+        if (!response.ok) {
+          throw new Error(`Failed to fetch user: ${response.statusText}`);
+        }
+        const data = await response.json();
+        console.log("User data response:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        return null;
+      }
+    },
+    retry: false,
+  });
+
+  console.log("useAuth hook state:", { user, isLoading, error });
+
+  return {
+    user: user || null,
+    isLoading,
+    error: error || null,
+  };
 }
