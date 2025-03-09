@@ -222,13 +222,13 @@ export function SearchBar({ onSearch, mapRef }: Props) {
 
   return (
     <div className="relative w-full">
-      <Command className="w-full overflow-hidden rounded-lg" shouldFilter={false}>
+      <Command className="w-full overflow-hidden rounded-lg shadow-lg" shouldFilter={false}>
         <CommandInput
           placeholder="Search by address"
           value={query}
           onValueChange={setQuery}
           disabled={loading}
-          className="h-10 bg-background/90 backdrop-blur-sm w-full text-base"
+          className="h-10 bg-background/90 backdrop-blur-sm w-full text-base px-4"
           onFocus={() => setFocused(true)}
           onBlur={() => {
             setTimeout(() => setFocused(false), 200);
@@ -238,7 +238,7 @@ export function SearchBar({ onSearch, mapRef }: Props) {
           <CommandList className="max-h-[300px] overflow-y-auto">
             <CommandEmpty>
               {loading ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 p-4">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Searching...
                 </div>
@@ -257,6 +257,7 @@ export function SearchBar({ onSearch, mapRef }: Props) {
                     setPropertyCardVisible(true);
                     setIsLoadingProperty(false);
                   }}
+                  className="px-4 py-3"
                 >
                   <div className="flex flex-col gap-1">
                     <div className="font-medium text-base">
