@@ -63,9 +63,16 @@ export async function getPropertyQuery(userId: string, propertyId: string) {
 
 export async function signInWithGoogle(): Promise<User> {
   console.log("Starting Google sign-in process...");
+
+  // Initialize Google Auth Provider with custom parameters
   const provider = new GoogleAuthProvider();
+  provider.addScope('email');
+  provider.addScope('profile');
+
+  // Set custom parameters
   provider.setCustomParameters({
-    prompt: 'select_account'
+    prompt: 'select_account',
+    auth_type: 'reauthenticate'
   });
 
   try {
@@ -88,6 +95,8 @@ export async function signInWithGoogle(): Promise<User> {
       throw new Error('Sign-in cancelled. Please try again.');
     } else if (error.code === 'auth/unauthorized-domain') {
       throw new Error(`This domain (${currentDomain}) is not authorized for sign-in. Please add it to Firebase Console's Authorized Domains list.`);
+    } else if (error.code === 'auth/invalid-action-code') {
+      throw new Error('The sign-in link has expired or has already been used. Please try signing in again.');
     }
     throw error;
   }
