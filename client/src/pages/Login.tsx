@@ -72,7 +72,13 @@ export default function Login() {
       } else if (error.code === "auth/unauthorized-domain") {
         toast({
           title: "Login Error",
-          description: `This domain (${window.location.hostname}) is not authorized for login. Please add it to Firebase authorized domains.`,
+          description: `This domain (${window.location.hostname}) is not authorized for sign-in. Please add it to Firebase Console's Authorized Domains list.`,
+          variant: "destructive",
+        });
+      } else if (error.code === 'auth/invalid-action-code') {
+        toast({
+          title: "Login Error",
+          description: 'The sign-in link has expired or has already been used. Please try signing in again.',
           variant: "destructive",
         });
       } else {

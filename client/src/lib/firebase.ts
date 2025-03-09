@@ -47,13 +47,17 @@ export const db = getDatabase(app);
 
 // Set persistence to LOCAL
 console.log('Setting Firebase persistence to LOCAL...');
-setPersistence(auth, browserLocalPersistence)
-  .then(() => {
-    console.log("Firebase persistence set to LOCAL");
-  })
-  .catch((error) => {
-    console.error("Error setting persistence:", error);
-  });
+try {
+  setPersistence(auth, browserLocalPersistence)
+    .then(() => {
+      console.log("Firebase persistence set to LOCAL");
+    })
+    .catch((error) => {
+      console.error("Error setting persistence:", error);
+    });
+} catch (error) {
+  console.error('Failed to set persistence:', error);
+}
 
 // Check if popups are allowed
 async function checkPopupsAllowed(): Promise<boolean> {
@@ -75,6 +79,7 @@ export async function signInWithGoogle(): Promise<User> {
   // Check if popups are allowed first
   const popupsAllowed = await checkPopupsAllowed();
   if (!popupsAllowed) {
+    console.error("Popups are blocked");
     throw new Error("Please enable popups for this site and try again. You can usually do this by clicking the popup blocked icon in your browser's address bar.");
   }
 
@@ -98,9 +103,8 @@ export async function signInWithGoogle(): Promise<User> {
     });
     return result.user;
   } catch (error: any) {
-    console.error('Google sign in error:', error);
-    console.error('Error code:', error.code);
-    console.error('Error message:', error.message);
+    console.error('Google sign in error:', error.message, error.stack); //More detailed logging
+    const errorMessage = error.message || "An error occurred"; //Handle potential null message
 
     if (error.code === 'auth/popup-blocked') {
       throw new Error('Please enable popups for this site to use Google sign-in');
