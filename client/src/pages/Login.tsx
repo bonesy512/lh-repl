@@ -6,10 +6,12 @@ import { signInWithGoogle } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Login() {
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -22,6 +24,7 @@ export default function Login() {
   async function handleLogin() {
     try {
       setLoading(true);
+      setError(null);
       console.log("Starting Google sign-in process...");
       const user = await signInWithGoogle();
       console.log("Google sign-in successful:", user);
@@ -38,6 +41,8 @@ export default function Login() {
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Login failed:", error);
+      const errorMessage = error.message || "An error occurred during login";
+      setError(errorMessage);
 
       if (error.code === "auth/unauthorized-domain") {
         toast({
@@ -48,7 +53,7 @@ export default function Login() {
       } else {
         toast({
           title: "Login Failed",
-          description: "An error occurred during login. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         });
       }
@@ -95,6 +100,13 @@ export default function Login() {
               Sign in to access AI-powered land investment tools
             </p>
           </div>
+
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <Button
             className="w-full"
             onClick={handleLogin}

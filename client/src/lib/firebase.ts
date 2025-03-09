@@ -1,6 +1,22 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, User } from "firebase/auth";
-import { getDatabase, ref, get, set, query, orderByChild, equalTo } from "firebase/database";
+import { getDatabase, ref, get, set } from "firebase/database";
+
+// Verify Firebase configuration
+const requiredEnvVars = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_APP_ID'
+];
+
+requiredEnvVars.forEach(varName => {
+  if (!import.meta.env[varName]) {
+    throw new Error(`Missing required environment variable: ${varName}`);
+  }
+});
+
+const currentDomain = window.location.hostname;
+console.log("Current domain:", currentDomain);
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,8 +27,21 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+console.log("Initializing Firebase with config:", {
+  projectId: firebaseConfig.projectId,
+  authDomain: firebaseConfig.authDomain,
+  currentDomain
+});
+
+let app;
+try {
+  app = initializeApp(firebaseConfig);
+  console.log("Firebase initialized successfully");
+} catch (error) {
+  console.error("Firebase initialization error:", error);
+  throw error;
+}
+
 export const auth = getAuth(app);
 export const db = getDatabase(app);
 
@@ -33,18 +62,36 @@ export async function getPropertyQuery(userId: string, propertyId: string) {
 }
 
 export async function signInWithGoogle(): Promise<User> {
+  console.log("Starting Google sign-in process...");
   const provider = new GoogleAuthProvider();
+
   try {
+    console.log("Attempting Google sign-in popup...");
     const result = await signInWithPopup(auth, provider);
-    console.log("Google sign in successful:", result.user);
+    console.log("Google sign in successful:", {
+      uid: result.user.uid,
+      email: result.user.email,
+      displayName: result.user.displayName
+    });
     return result.user;
   } catch (error: any) {
     console.error("Google sign in error:", error);
+    console.error("Error code:", error.code);
+    console.error("Error message:", error.message);
+
+    if (error.code === 'auth/popup-blocked') {
+      throw new Error('Please enable popups for this site to use Google sign-in');
+    } else if (error.code === 'auth/cancelled-popup-request') {
+      throw new Error('Sign-in cancelled. Please try again.');
+    } else if (error.code === 'auth/unauthorized-domain') {
+      throw new Error(`This domain (${currentDomain}) is not authorized for sign-in. Please add it to Firebase Console's Authorized Domains list.`);
+    }
     throw error;
   }
 }
 
 export function signOut() {
+  console.log("Signing out user...");
   return auth.signOut();
 }
 
@@ -60,6 +107,7 @@ auth.onAuthStateChanged((user) => {
       if (typeof resource === 'string' && resource.startsWith('/api')) {
         try {
           const token = await user.getIdToken();
+          console.log("Adding auth token to request:", resource);
           const modifiedConfig = {
             ...config,
             headers: {
