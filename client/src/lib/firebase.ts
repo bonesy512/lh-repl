@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider, User } from "firebase/auth";
+import { getAuth, signInWithPopup, GoogleAuthProvider, User, browserLocalPersistence, setPersistence } from "firebase/auth";
 import { getDatabase, ref, get, set } from "firebase/database";
 
 // Verify Firebase configuration
@@ -45,6 +45,16 @@ try {
 export const auth = getAuth(app);
 export const db = getDatabase(app);
 
+// Set persistence to LOCAL
+console.log('Setting Firebase persistence to LOCAL...');
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log("Firebase persistence set to LOCAL");
+  })
+  .catch((error) => {
+    console.error("Error setting persistence:", error);
+  });
+
 // Check if popups are allowed
 async function checkPopupsAllowed(): Promise<boolean> {
   try {
@@ -88,9 +98,9 @@ export async function signInWithGoogle(): Promise<User> {
     });
     return result.user;
   } catch (error: any) {
-    console.error("Google sign in error:", error);
-    console.error("Error code:", error.code);
-    console.error("Error message:", error.message);
+    console.error('Google sign in error:', error);
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
 
     if (error.code === 'auth/popup-blocked') {
       throw new Error('Please enable popups for this site to use Google sign-in');

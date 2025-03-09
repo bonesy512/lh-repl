@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -17,10 +17,11 @@ export default function Login() {
   const { user } = useAuth();
 
   // Redirect if already logged in
-  if (user) {
-    navigate("/dashboard");
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   async function handleLogin() {
     try {
@@ -71,7 +72,7 @@ export default function Login() {
       } else if (error.code === "auth/unauthorized-domain") {
         toast({
           title: "Login Error",
-          description: `This domain is not authorized for login. Please add "${window.location.hostname}" to Firebase authorized domains.`,
+          description: `This domain (${window.location.hostname}) is not authorized for login. Please add it to Firebase authorized domains.`,
           variant: "destructive",
         });
       } else {
@@ -84,6 +85,15 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // If already logged in, show loading state while redirecting
+  if (user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -142,14 +152,14 @@ export default function Login() {
           <p className="px-8 text-center text-sm text-muted-foreground">
             By clicking continue, you agree to our{" "}
             <a
-              href="#"
+              href="/terms"
               className="underline underline-offset-4 hover:text-primary"
             >
               Terms of Service
             </a>{" "}
             and{" "}
             <a
-              href="#"
+              href="/privacy"
               className="underline underline-offset-4 hover:text-primary"
             >
               Privacy Policy
