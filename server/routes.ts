@@ -13,18 +13,19 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// Import config with validated environment variables
+import { config } from "./config";
+
 // Initialize Firebase Admin
 console.log('Initializing Firebase Admin...');
 try {
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
-    throw new Error('Missing required Firebase credentials');
-  }
-
+  // The private key is already validated in config.ts
+  const privateKey = config.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+  
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: "landhacker-9a7c1",
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      clientEmail: config.FIREBASE_CLIENT_EMAIL,
       privateKey: privateKey,
     }),
   });
@@ -281,6 +282,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  // Import API documentation
+  import { generateApiDocsHtml } from './api-docs';
+  
+  // Add API documentation route
+  app.get('/api/docs', (req, res) => {
+    res.setHeader('Content-Type', 'text/html');
+    res.send(generateApiDocsHtml());
+  });
 
   const httpServer = createServer(app);
   return httpServer;
