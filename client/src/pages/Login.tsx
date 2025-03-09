@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { queryClient } from "@/lib/queryClient";
 
 export default function Login() {
   const [, navigate] = useLocation();
@@ -49,6 +50,10 @@ export default function Login() {
       if (!userData) {
         throw new Error("Failed to authenticate with backend");
       }
+
+      // Update auth state
+      queryClient.setQueryData(["/api/user"], userData);
+      console.log("Updated query cache with user data");
 
       console.log("Backend verification successful");
       navigate("/dashboard");
