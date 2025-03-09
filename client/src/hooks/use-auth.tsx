@@ -42,9 +42,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       console.log("Fetching user data...");
       try {
-        const response = await getQueryFn({ on401: "returnNull" })();
-        console.log("User data response:", response);
-        return response || null;
+        const response = await fetch("/api/user", {
+          credentials: "include",
+        });
+        if (response.status === 401) {
+          console.log("User not authenticated");
+          return null;
+        }
+        if (!response.ok) {
+          throw new Error(`Failed to fetch user: ${response.statusText}`);
+        }
+        const data = await response.json();
+        console.log("User data response:", data);
+        return data;
       } catch (error) {
         console.error("Error fetching user data:", error);
         return null;
@@ -135,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user: user || null,
         isLoading,
-        error,
+        error: error || null,
         loginMutation,
         logoutMutation,
         registerMutation,
