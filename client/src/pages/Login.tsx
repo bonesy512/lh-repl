@@ -62,7 +62,13 @@ export default function Login() {
       const errorMessage = error.message || "An error occurred during login";
       setError(errorMessage);
 
-      if (error.code === "auth/unauthorized-domain") {
+      if (error.code === "auth/popup-blocked") {
+        toast({
+          title: "Login Error",
+          description: "Please enable popups for this site to use Google sign-in. Look for the popup blocked icon in your browser's address bar.",
+          variant: "destructive",
+        });
+      } else if (error.code === "auth/unauthorized-domain") {
         toast({
           title: "Login Error",
           description: `This domain is not authorized for login. Please add "${window.location.hostname}" to Firebase authorized domains.`,

@@ -45,24 +45,28 @@ try {
 export const auth = getAuth(app);
 export const db = getDatabase(app);
 
-// Property query functions
-export async function savePropertyQuery(userId: string, property: any) {
-  const queryRef = ref(db, `queries/${userId}/${property.id}`);
-  await set(queryRef, {
-    ...property,
-    timestamp: Date.now()
-  });
-  return property;
-}
-
-export async function getPropertyQuery(userId: string, propertyId: string) {
-  const queryRef = ref(db, `queries/${userId}/${propertyId}`);
-  const snapshot = await get(queryRef);
-  return snapshot.exists() ? snapshot.val() : null;
+// Check if popups are allowed
+async function checkPopupsAllowed(): Promise<boolean> {
+  try {
+    const popup = window.open('', '_blank', 'width=1,height=1');
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      return false;
+    }
+    popup.close();
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 export async function signInWithGoogle(): Promise<User> {
   console.log("Starting Google sign-in process...");
+
+  // Check if popups are allowed first
+  const popupsAllowed = await checkPopupsAllowed();
+  if (!popupsAllowed) {
+    throw new Error("Please enable popups for this site and try again. You can usually do this by clicking the popup blocked icon in your browser's address bar.");
+  }
 
   // Initialize Google Auth Provider with custom parameters
   const provider = new GoogleAuthProvider();
@@ -71,8 +75,7 @@ export async function signInWithGoogle(): Promise<User> {
 
   // Set custom parameters
   provider.setCustomParameters({
-    prompt: 'select_account',
-    auth_type: 'reauthenticate'
+    prompt: 'select_account'
   });
 
   try {
@@ -138,3 +141,19 @@ auth.onAuthStateChanged((user) => {
     };
   }
 });
+
+// Property query functions
+export async function savePropertyQuery(userId: string, property: any) {
+  const queryRef = ref(db, `queries/${userId}/${property.id}`);
+  await set(queryRef, {
+    ...property,
+    timestamp: Date.now()
+  });
+  return property;
+}
+
+export async function getPropertyQuery(userId: string, propertyId: string) {
+  const queryRef = ref(db, `queries/${userId}/${propertyId}`);
+  const snapshot = await get(queryRef);
+  return snapshot.exists() ? snapshot.val() : null;
+}
