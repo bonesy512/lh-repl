@@ -53,7 +53,7 @@ try {
       console.log("Firebase Admin initialized successfully");
     })
     .catch((error) => {
-      console.error('Firebase token verification failed:', error.message, error.stack); //More detailed logging
+      console.error('Firebase token verification failed:', error.message, error.stack);
     });
 } catch (error) {
   console.error('Failed to set persistence:', error);
@@ -101,10 +101,19 @@ export async function signInWithGoogle(): Promise<User> {
       email: result.user.email,
       displayName: result.user.displayName
     });
+
+    if (typeof window !== 'undefined') {
+      // Close any existing popups
+      const popups = window.open('', '_self');
+      if (popups) {
+        popups.close();
+      }
+    }
+
     return result.user;
   } catch (error: any) {
-    console.error('Google sign in error:', error.message, error.stack); //More detailed logging
-    const errorMessage = error.message || "An error occurred"; //Handle potential null message
+    console.error('Google sign in error:', error.message, error.stack);
+    const errorMessage = error.message || "An error occurred";
 
     if (error.code === 'auth/popup-blocked') {
       throw new Error('Please enable popups for this site to use Google sign-in');
