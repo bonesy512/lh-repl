@@ -3,7 +3,27 @@ import { useAppStore } from "@/utils/store";
 import { useState, useEffect, useRef } from "react";
 import type { MapRef } from 'react-map-gl';
 import { Loader2 } from 'lucide-react';
-import type { PropertyDetailsResponse } from 'types';
+
+// Define types properly
+interface Address {
+  streetAddress: string;
+  city: string;
+  state: string;
+  zipcode: string;
+}
+
+interface PropertyDetailsResponse {
+  id: string;
+  propertyId: string;
+  address: Address;
+  latitude: number;
+  longitude: number;
+  distanceToCity?: string;
+  timeToCity?: string;
+  priceComparisons?: any;
+  zpid?: number;
+  isSaved?: boolean;
+}
 
 interface Coordinates {
   latitude: number;
@@ -135,81 +155,94 @@ export function SearchBar({ onSearch, mapRef }: Props) {
         );
       }
 
+      console.log("Fetching search results from:", url);
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Mapbox API error: ${response.status} ${response.statusText}`);
       }
 
       const data: GeocodingResponse = await response.json();
+      console.log("Search response:", data);
+
       if (!data?.features?.length) {
         setSearchResults([]);
         return;
       }
 
       const transformedResults = await Promise.all(data.features.map(async (feature, index) => {
-        const cityContext = feature.context?.find(ctx => ctx.id.startsWith('place.'));
-        const stateContext = feature.context?.find(ctx => ctx.id.startsWith('region.'));
-        const zipcodeContext = feature.context?.find(ctx => ctx.id.startsWith('postcode.'));
-
-        const address: Address = {
-          streetAddress: feature.place_name || feature.text,
-          city: cityContext?.text || '',
-          state: stateContext?.text || '',
-          zipcode: zipcodeContext?.text || ''
-        };
-
-        const property: PropertyDetailsResponse = {
-          id: `mb_${Date.now()}_${index}`,
-          isSaved: false,
-          propertyId: feature.id,
-          address,
-          latitude: feature.center[1],
-          longitude: feature.center[0],
-          zpid: 0
-        };
-
         try {
-          const distanceResponse = await fetch('/api/distance-to-city', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              origins: `${property.latitude},${property.longitude}`,
-              destination: address.city || 'nearest city'
-            })
-          });
+          const cityContext = feature.context?.find(ctx => ctx.id.startsWith('place.'));
+          const stateContext = feature.context?.find(ctx => ctx.id.startsWith('region.'));
+          const zipcodeContext = feature.context?.find(ctx => ctx.id.startsWith('postcode.'));
 
-          if (distanceResponse.ok) {
-            const distanceData = await distanceResponse.json();
-            property.distanceToCity = distanceData.distance_text;
-            property.timeToCity = distanceData.duration_text;
+          const address: Address = {
+            streetAddress: feature.place_name || feature.text,
+            city: cityContext?.text || '',
+            state: stateContext?.text || '',
+            zipcode: zipcodeContext?.text || ''
+          };
+
+          const property: PropertyDetailsResponse = {
+            id: `mb_${Date.now()}_${index}`,
+            propertyId: feature.id,
+            address,
+            latitude: feature.center[1],
+            longitude: feature.center[0],
+            zpid: 0,
+            isSaved: false
+          };
+
+          // Get distance to city
+          try {
+            const distanceResponse = await fetch('/api/distance-to-city', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                origins: `${property.latitude},${property.longitude}`,
+                destination: address.city || 'nearest city'
+              })
+            });
+
+            if (distanceResponse.ok) {
+              const distanceData = await distanceResponse.json();
+              property.distanceToCity = distanceData.distance_text;
+              property.timeToCity = distanceData.duration_text;
+            }
+          } catch (error) {
+            console.error('Error fetching distance:', error);
           }
-        } catch (error) {
-          console.error('Error fetching distance:', error);
-        }
 
-        try {
-          const priceResponse = await fetch('/api/scrape/estimates', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              address: property.address.streetAddress,
-              city: property.address.city,
-              state: property.address.state
-            })
-          });
+          // Get price estimates
+          try {
+            const priceResponse = await fetch('/api/scrape/estimates', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                address: property.address.streetAddress,
+                city: property.address.city,
+                state: property.address.state
+              })
+            });
 
-          if (priceResponse.ok) {
-            const priceData = await priceResponse.json();
-            property.priceComparisons = priceData;
+            if (priceResponse.ok) {
+              const priceData = await priceResponse.json();
+              property.priceComparisons = priceData;
+            }
+          } catch (error) {
+            console.error('Error fetching price estimates:', error);
           }
-        } catch (error) {
-          console.error('Error fetching price estimates:', error);
-        }
 
-        return property;
+          return property;
+        } catch (error) {
+          console.error('Error transforming search result:', error);
+          return null;
+        }
       }));
 
-      setSearchResults(transformedResults);
+      // Filter out any null results from errors
+      const validResults = transformedResults.filter((result): result is PropertyDetailsResponse => result !== null);
+      console.log("Transformed results:", validResults);
+      setSearchResults(validResults);
     } catch (error) {
       console.error('Search failed:', error);
       setSearchResults([]);
