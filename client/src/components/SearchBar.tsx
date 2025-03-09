@@ -25,42 +25,6 @@ interface PropertyDetailsResponse {
   isSaved?: boolean;
 }
 
-interface Coordinates {
-  latitude: number;
-  longitude: number;
-}
-
-interface GeocodingFeature {
-  id: string;
-  type: string;
-  place_type: string[];
-  relevance: number;
-  properties: {
-    accuracy?: string;
-    address?: string;
-    category?: string;
-    maki?: string;
-  };
-  text: string;
-  place_name: string;
-  center: [number, number];
-  geometry: {
-    type: string;
-    coordinates: [number, number];
-  };
-  context?: Array<{
-    id: string;
-    text: string;
-  }>;
-}
-
-interface GeocodingResponse {
-  type: string;
-  query: string[];
-  features: GeocodingFeature[];
-  attribution: string;
-}
-
 export interface Props {
   onSearch?: (query: string) => void;
   mapRef?: React.RefObject<MapRef>;
@@ -100,68 +64,53 @@ export function SearchBar({ onSearch, mapRef }: Props) {
     };
   }, [query]);
 
-  const isCoordinates = (query: string): Coordinates | null => {
-    const coordPattern = /^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/;
-    const match = query.match(coordPattern);
+  // Check if input is coordinates
+  const isCoordinates = (input: string): { lat: number; lng: number } | null => {
+    const coordRegex = /^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/;
+    const match = input.match(coordRegex);
 
     if (match) {
-      const latitude = parseFloat(match[1]);
-      const longitude = parseFloat(match[2]);
-
-      if (latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
-        return { latitude, longitude };
+      const lat = parseFloat(match[1]);
+      const lng = parseFloat(match[2]);
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return { lat, lng };
       }
     }
-
     return null;
   };
 
-  const buildMapboxUrl = (base: string, params: Record<string, string>) => {
-    const searchParams = new URLSearchParams({
+  const buildMapboxUrl = (query: string) => {
+    const coords = isCoordinates(query);
+    const params = new URLSearchParams({
       access_token: import.meta.env.VITE_MAPBOX_TOKEN,
-      ...params
+      types: 'address,place,locality,neighborhood',
+      limit: '5',
+      country: 'us',
     });
-    return `${base}?${searchParams.toString()}`;
+
+    if (coords) {
+      return `https://api.mapbox.com/geocoding/v5/mapbox.places/${coords.lng},${coords.lat}.json?${params.toString()}`;
+    }
+    return `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params.toString()}`;
   };
 
-  const handleSearch = async (query: string) => {
-    if (!query || query.length < 2) {
+  const handleSearch = async (searchQuery: string) => {
+    if (!searchQuery || searchQuery.length < 2) {
       setSearchResults([]);
       return;
     }
 
     setLoading(true);
     try {
-      const coords = isCoordinates(query);
-      let url;
+      const url = buildMapboxUrl(searchQuery);
+      console.log("Fetching search results...");
 
-      if (coords) {
-        url = buildMapboxUrl(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${coords.longitude},${coords.latitude}.json`,
-          {
-            types: 'address,place,locality,neighborhood',
-            limit: '5',
-            country: 'us',
-          }
-        );
-      } else {
-        url = buildMapboxUrl(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`,
-          {
-            types: 'address,place,locality,neighborhood',
-            limit: '5',
-            country: 'us',
-          }
-        );
-      }
-
-      console.log("Fetching search results from:", url);
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Mapbox API error: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch search results: ${response.statusText}`);
       }
 
-      const data: GeocodingResponse = await response.json();
+      const data = await response.json();
       console.log("Search response:", data);
 
       if (!data?.features?.length) {
@@ -169,78 +118,47 @@ export function SearchBar({ onSearch, mapRef }: Props) {
         return;
       }
 
-      const transformedResults = await Promise.all(data.features.map(async (feature, index) => {
+      const results = await Promise.all(data.features.map(async (feature: any) => {
         try {
-          const cityContext = feature.context?.find(ctx => ctx.id.startsWith('place.'));
-          const stateContext = feature.context?.find(ctx => ctx.id.startsWith('region.'));
-          const zipcodeContext = feature.context?.find(ctx => ctx.id.startsWith('postcode.'));
+          const cityContext = feature.context?.find((ctx: any) => ctx.id.startsWith('place.'));
+          const stateContext = feature.context?.find((ctx: any) => ctx.id.startsWith('region.'));
+          const zipcodeContext = feature.context?.find((ctx: any) => ctx.id.startsWith('postcode.'));
 
-          const address: Address = {
-            streetAddress: feature.place_name || feature.text,
-            city: cityContext?.text || '',
-            state: stateContext?.text || '',
-            zipcode: zipcodeContext?.text || ''
-          };
-
-          const property: PropertyDetailsResponse = {
-            id: `mb_${Date.now()}_${index}`,
+          const propertyResult: PropertyDetailsResponse = {
+            id: `mb_${Date.now()}_${Math.random()}`,
             propertyId: feature.id,
-            address,
+            address: {
+              streetAddress: feature.place_name,
+              city: cityContext?.text || '',
+              state: stateContext?.text || '',
+              zipcode: zipcodeContext?.text || ''
+            },
             latitude: feature.center[1],
             longitude: feature.center[0],
             zpid: 0,
             isSaved: false
           };
 
-          // Get distance to city
+          // Add distance to city information
           try {
-            const distanceResponse = await fetch('/api/distance-to-city', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                origins: `${property.latitude},${property.longitude}`,
-                destination: address.city || 'nearest city'
-              })
-            });
-
+            const distanceResponse = await fetch(`/api/distance?origin=${propertyResult.latitude},${propertyResult.longitude}&destination=${propertyResult.address.city || 'nearest city'}`);
             if (distanceResponse.ok) {
               const distanceData = await distanceResponse.json();
-              property.distanceToCity = distanceData.distance_text;
-              property.timeToCity = distanceData.duration_text;
+              propertyResult.distanceToCity = distanceData.distance;
+              propertyResult.timeToCity = distanceData.duration;
             }
           } catch (error) {
-            console.error('Error fetching distance:', error);
+            console.error('Failed to fetch distance:', error);
           }
 
-          // Get price estimates
-          try {
-            const priceResponse = await fetch('/api/scrape/estimates', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                address: property.address.streetAddress,
-                city: property.address.city,
-                state: property.address.state
-              })
-            });
-
-            if (priceResponse.ok) {
-              const priceData = await priceResponse.json();
-              property.priceComparisons = priceData;
-            }
-          } catch (error) {
-            console.error('Error fetching price estimates:', error);
-          }
-
-          return property;
+          return propertyResult;
         } catch (error) {
-          console.error('Error transforming search result:', error);
+          console.error('Error processing search result:', error);
           return null;
         }
       }));
 
-      // Filter out any null results from errors
-      const validResults = transformedResults.filter((result): result is PropertyDetailsResponse => result !== null);
+      const validResults = results.filter((result): result is PropertyDetailsResponse => result !== null);
       console.log("Transformed results:", validResults);
       setSearchResults(validResults);
     } catch (error) {
@@ -305,7 +223,7 @@ export function SearchBar({ onSearch, mapRef }: Props) {
                     </div>
                     {result.distanceToCity && (
                       <div className="text-sm text-muted-foreground">
-                        {result.distanceToCity} ({result.timeToCity}) to {result.address.city}
+                        {result.distanceToCity} ({result.timeToCity} away)
                       </div>
                     )}
                   </div>
