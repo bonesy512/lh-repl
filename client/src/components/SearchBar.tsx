@@ -141,11 +141,21 @@ export function SearchBar({ onSearch, mapRef }: Props) {
 
           // Add distance to city information
           try {
-            const distanceResponse = await fetch(`/api/distance?origin=${propertyResult.latitude},${propertyResult.longitude}&destination=${propertyResult.address.city || 'nearest city'}`);
+            const distanceResponse = await fetch(`/api/distance-to-city`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                origins: `${propertyResult.latitude},${propertyResult.longitude}`,
+                destination: propertyResult.address.city || 'nearest city'
+              })
+            });
+
             if (distanceResponse.ok) {
               const distanceData = await distanceResponse.json();
-              propertyResult.distanceToCity = distanceData.distance;
-              propertyResult.timeToCity = distanceData.duration;
+              propertyResult.distanceToCity = distanceData.distance_text;
+              propertyResult.timeToCity = distanceData.duration_text;
             }
           } catch (error) {
             console.error('Failed to fetch distance:', error);
@@ -221,9 +231,9 @@ export function SearchBar({ onSearch, mapRef }: Props) {
                         .filter(Boolean)
                         .join(', ')}
                     </div>
-                    {result.distanceToCity && (
+                    {result.distanceToCity && result.timeToCity && (
                       <div className="text-sm text-muted-foreground">
-                        {result.distanceToCity} ({result.timeToCity} away)
+                        {result.distanceToCity} ({result.timeToCity} drive)
                       </div>
                     )}
                   </div>
