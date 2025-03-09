@@ -50,10 +50,10 @@ console.log('Setting Firebase persistence to LOCAL...');
 try {
   setPersistence(auth, browserLocalPersistence)
     .then(() => {
-      console.log("Firebase persistence set to LOCAL");
+      console.log("Firebase Admin initialized successfully");
     })
     .catch((error) => {
-      console.error("Error setting persistence:", error);
+      console.error('Firebase token verification failed:', error.message, error.stack); //More detailed logging
     });
 } catch (error) {
   console.error('Failed to set persistence:', error);
