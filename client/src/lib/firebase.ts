@@ -64,6 +64,9 @@ export async function getPropertyQuery(userId: string, propertyId: string) {
 export async function signInWithGoogle(): Promise<User> {
   console.log("Starting Google sign-in process...");
   const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({
+    prompt: 'select_account'
+  });
 
   try {
     console.log("Attempting Google sign-in popup...");
