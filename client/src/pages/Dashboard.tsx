@@ -103,8 +103,8 @@ export default function Dashboard() {
       <div className="container mx-auto px-4 py-8">
         <Alert variant="destructive">
           <AlertDescription>
-            {parcelsError instanceof Error 
-              ? parcelsError.message 
+            {parcelsError instanceof Error
+              ? parcelsError.message
               : "Failed to load dashboard data. Please try again later."}
           </AlertDescription>
         </Alert>
@@ -114,60 +114,60 @@ export default function Dashboard() {
 
   console.log("Rendering dashboard content");
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Overview Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Available Credits
               </CardTitle>
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
+              <CreditCard className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{authUser?.credits || 0}</div>
+              <div className="text-2xl font-bold text-primary">{authUser?.credits || 0}</div>
               <p className="text-xs text-muted-foreground">
                 Used for AI analysis and marketing
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Team Members</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <Users className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1</div>
+              <div className="text-2xl font-bold text-primary">1</div>
               <p className="text-xs text-muted-foreground">
                 Add members for $10/month each
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Properties Analyzed
               </CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <Activity className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{parcels?.length || 0}</div>
+              <div className="text-2xl font-bold text-primary">{parcels?.length || 0}</div>
               <p className="text-xs text-muted-foreground">
                 Total properties analyzed
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Subscription</CardTitle>
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
+              <CreditCard className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">Professional</div>
+              <div className="text-2xl font-bold text-primary">Professional</div>
               <p className="text-xs text-muted-foreground">
                 $20/month • Renews Mar 28
               </p>
@@ -175,8 +175,8 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        <Tabs defaultValue="map">
-          <TabsList>
+        <Tabs defaultValue="map" className="space-y-4">
+          <TabsList className="bg-muted">
             <TabsTrigger value="map">Map View</TabsTrigger>
             <TabsTrigger value="billing">Billing & Usage</TabsTrigger>
           </TabsList>
@@ -202,14 +202,14 @@ export default function Dashboard() {
           <TabsContent value="billing" className="space-y-8">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
               {/* Invoice History */}
-              <Card className="col-span-4">
+              <Card className="col-span-4 hover:shadow-lg transition-shadow">
                 <CardHeader>
-                  <CardTitle>Invoice History</CardTitle>
+                  <CardTitle className="text-lg font-semibold">Invoice History</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {loadingInvoices ? (
                     <div className="flex items-center justify-center p-4">
-                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
                   ) : (
                     <div className="space-y-8">
@@ -224,7 +224,7 @@ export default function Dashboard() {
                                 {new Date(invoice.date).toLocaleDateString()}
                               </p>
                             </div>
-                            <div className="ml-auto font-medium">
+                            <div className="ml-auto font-medium text-primary">
                               ${invoice.amount}
                             </div>
                           </div>
@@ -240,19 +240,20 @@ export default function Dashboard() {
               </Card>
 
               {/* Current Plan */}
-              <Card className="col-span-3">
+              <Card className="col-span-3 hover:shadow-lg transition-shadow">
                 <CardHeader>
-                  <CardTitle>Current Plan</CardTitle>
+                  <CardTitle className="text-lg font-semibold">Current Plan</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div>
-                      <h3 className="font-medium">Professional Plan</h3>
+                      <h3 className="font-medium text-primary">Professional Plan</h3>
                       <p className="text-sm text-muted-foreground">$20/month</p>
                     </div>
                     <Button
                       variant="outline"
                       onClick={() => navigate("/subscription")}
+                      className="w-full hover:bg-primary hover:text-primary-foreground"
                     >
                       Manage Subscription
                     </Button>
@@ -262,9 +263,9 @@ export default function Dashboard() {
             </div>
 
             {/* Properties Analyzed Section */}
-            <Card>
+            <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
-                <CardTitle>Properties Analyzed</CardTitle>
+                <CardTitle className="text-lg font-semibold">Properties Analyzed</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
@@ -287,6 +288,7 @@ export default function Dashboard() {
                               setSelectedParcel(parcel);
                               handleAnalyze();
                             }}
+                            className="hover:bg-primary hover:text-primary-foreground"
                           >
                             View Analysis
                           </Button>
@@ -309,7 +311,7 @@ export default function Dashboard() {
           open={activeDialog === "analysis"}
           onOpenChange={() => setActiveDialog(null)}
         >
-          <DialogContent>
+          <DialogContent className="sm:max-w-xl">
             <DialogHeader>
               <DialogTitle>Property Analysis</DialogTitle>
             </DialogHeader>
@@ -327,7 +329,7 @@ export default function Dashboard() {
           open={activeDialog === "marketing"}
           onOpenChange={() => setActiveDialog(null)}
         >
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create Marketing Campaign</DialogTitle>
             </DialogHeader>
