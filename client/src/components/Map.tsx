@@ -34,6 +34,12 @@ export default function PropertyMap({
     zoom: 3
   });
 
+  console.log("PropertyMap render:", { 
+    parcelCount: parcels?.length || 0,
+    loading,
+    viewPort: viewport 
+  });
+
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
   const mapRef = useRef<MapRef>(null);
 
@@ -81,8 +87,15 @@ export default function PropertyMap({
     );
   }
 
-  // Assuming activeLayers is defined elsewhere in the component
-  const activeLayers = ["terrain", "satellite", "parcel-boundaries"]; //Example, replace with actual logic
+  // Safeguard against no parcels array
+  if (!Array.isArray(parcels)) {
+    console.error("Invalid parcels data:", parcels);
+    return (
+      <div className="w-full h-[600px] flex items-center justify-center bg-muted">
+        <p>No parcel data available</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-[600px] relative">
@@ -91,56 +104,7 @@ export default function PropertyMap({
         <SearchBar mapRef={mapRef} />
       </div>
 
-      {/* Map Layers */}
-      {activeLayers.includes("terrain") && (
-        <Source
-          id="terrain"
-          type="raster-dem"
-          url="mapbox://mapbox.mapbox-terrain-dem-v1"
-        >
-          <Layer
-            id="terrain-data"
-            type="hillshade"
-            paint={{
-              "hillshade-exaggeration": 0.6
-            }}
-          />
-        </Source>
-      )}
-
-      {activeLayers.includes("satellite") && (
-        <Source
-          id="satellite"
-          type="raster"
-          url="mapbox://mapbox.satellite"
-        >
-          <Layer
-            id="satellite-layer"
-            type="raster"
-          />
-        </Source>
-      )}
-
-      {activeLayers.includes("parcel-boundaries") && (
-        <Source
-          id="parcel-boundaries"
-          type="vector"
-          url="mapbox://mapbox.boundaries-adm2"
-        >
-          <Layer
-            id="parcel-lines"
-            type="line"
-            source-layer="boundaries_admin_2"
-            paint={{
-              "line-color": "#FF0000",
-              "line-width": 1
-            }}
-          />
-        </Source>
-      )}
-
-
-      {/* Measurement Controls */}
+      {/* Map Controls */}
       <div className="absolute bottom-[175px] left-2.5 z-[1] flex flex-col gap-2">
         <LayerControl />
         <MeasurementControls />
@@ -155,7 +119,7 @@ export default function PropertyMap({
       {/* Property Card */}
       {propertyCardVisible && selectedProperty && (
         <div className="absolute top-4 right-4 z-[3] w-[400px] max-w-[calc(100vw-2rem)]">
-          <PropertyCard onViewMore={onViewMore} />
+          <PropertyCard parcel={selectedParcel} onViewMore={onViewMore} />
         </div>
       )}
 
@@ -170,7 +134,6 @@ export default function PropertyMap({
         mapStyle="mapbox://styles/mapbox/streets-v11"
         style={{ width: '100%', height: '100%' }}
         onClick={(evt) => {
-          // If in measurement mode, add point
           if (measurementMode !== 'none') {
             addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
           }
@@ -188,52 +151,63 @@ export default function PropertyMap({
         />
 
         {/* Property Markers */}
-        {parcels.map((parcel) => (
-          <Marker
-            key={parcel.id}
-            latitude={Number(parcel.latitude)}
-            longitude={Number(parcel.longitude)}
-            onClick={evt => {
-              if (measurementMode !== 'none') {
-                addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
-              } else {
-                setSelectedParcel(parcel);
-                setSelectedProperty({
-                  propertyId: parcel.id,
-                  address: {
-                    streetAddress: parcel.address,
-                    city: parcel.city,
-                    state: parcel.state,
-                    zipcode: parcel.zipcode
-                  },
-                  ownerName: parcel.ownerName,
-                  latitude: Number(parcel.latitude),
-                  longitude: Number(parcel.longitude)
-                });
-                setPropertyCardVisible(true);
-                if (onParcelSelect) {
-                  onParcelSelect(parcel);
+        {parcels.map((parcel) => {
+          // Add type checking for required parcel properties
+          if (!parcel?.latitude || !parcel?.longitude) {
+            console.error("Invalid parcel data:", parcel);
+            return null;
+          }
+
+          return (
+            <Marker
+              key={parcel.id}
+              latitude={Number(parcel.latitude)}
+              longitude={Number(parcel.longitude)}
+              onClick={(evt) => {
+                evt.preventDefault(); // Prevent event bubbling
+                if (measurementMode !== 'none') {
+                  if (evt.lngLat) {
+                    addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
+                  }
+                } else {
+                  setSelectedParcel(parcel);
+                  setSelectedProperty({
+                    propertyId: parcel.id,
+                    address: {
+                      streetAddress: parcel.address,
+                      city: parcel.city || '',
+                      state: parcel.state || '',
+                      zipcode: parcel.zipcode || ''
+                    },
+                    ownerName: parcel.ownerName || '',
+                    latitude: Number(parcel.latitude),
+                    longitude: Number(parcel.longitude)
+                  });
+                  setPropertyCardVisible(true);
+                  if (onParcelSelect) {
+                    onParcelSelect(parcel);
+                  }
                 }
-              }
-            }}
-          >
-            <div className="text-primary cursor-pointer">
-              <svg
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-            </div>
-          </Marker>
-        ))}
+              }}
+            >
+              <div className="text-primary cursor-pointer">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="24"
+                  height="24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+              </div>
+            </Marker>
+          );
+        })}
 
         {/* Selected Property Popup */}
         {selectedParcel && (

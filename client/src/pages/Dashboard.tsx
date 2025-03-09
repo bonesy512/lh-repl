@@ -20,19 +20,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/use-auth";
 
-interface User {
-  id: number;
-  username: string;
-  credits: number;
-}
-
-interface Invoice {
-  id: number;
-  date: string;
-  amount: number;
-  description: string;
-}
-
 export default function Dashboard() {
   console.log("Dashboard component rendering");
   const { toast } = useToast();
@@ -67,8 +54,8 @@ export default function Dashboard() {
     user: authUser,
     loadingParcels,
     parcelsError,
-    parcelsCount: parcels.length,
-    invoicesCount: invoices.length,
+    parcelsCount: parcels?.length || 0,
+    invoicesCount: invoices?.length || 0,
     loadingInvoices
   });
 
@@ -167,7 +154,7 @@ export default function Dashboard() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{parcels.length}</div>
+              <div className="text-2xl font-bold">{parcels?.length || 0}</div>
               <p className="text-xs text-muted-foreground">
                 Total properties analyzed
               </p>
@@ -197,7 +184,7 @@ export default function Dashboard() {
           <TabsContent value="map" className="space-y-8">
             {/* Map Component */}
             <PropertyMap
-              parcels={parcels}
+              parcels={parcels || []}
               onParcelSelect={handleParcelSelect}
               loading={loadingParcels}
             />
@@ -226,22 +213,23 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <div className="space-y-8">
-                      {invoices.map((invoice) => (
-                        <div key={invoice.id} className="flex items-center">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
-                              {invoice.description}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(invoice.date).toLocaleDateString()}
-                            </p>
+                      {invoices && invoices.length > 0 ? (
+                        invoices.map((invoice) => (
+                          <div key={invoice.id} className="flex items-center">
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium leading-none">
+                                {invoice.description}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(invoice.date).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="ml-auto font-medium">
+                              ${invoice.amount}
+                            </div>
                           </div>
-                          <div className="ml-auto font-medium">
-                            ${invoice.amount}
-                          </div>
-                        </div>
-                      ))}
-                      {invoices.length === 0 && (
+                        ))
+                      ) : (
                         <p className="text-center text-muted-foreground">
                           No invoices found
                         </p>
@@ -280,32 +268,32 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {parcels.map((parcel) => (
-                    <div key={parcel.id} className="flex items-start space-x-4 border-b pb-4 last:border-0">
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {parcel.address}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {parcel.acres} acres {parcel.price && `• $${parcel.price.toLocaleString()}`}
-                        </p>
+                  {parcels && parcels.length > 0 ? (
+                    parcels.map((parcel) => (
+                      <div key={parcel.id} className="flex items-start space-x-4 border-b pb-4 last:border-0">
+                        <div className="flex-1 space-y-1">
+                          <p className="text-sm font-medium leading-none">
+                            {parcel.address}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {parcel.acres} acres {parcel.price && `• $${parcel.price.toLocaleString()}`}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedParcel(parcel);
+                              handleAnalyze();
+                            }}
+                          >
+                            View Analysis
+                          </Button>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedParcel(parcel);
-                            handleAnalyze();
-                          }}
-                        >
-                          View Analysis
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {parcels.length === 0 && (
+                    ))
+                  ) : (
                     <div className="text-center py-6 text-muted-foreground">
                       No properties analyzed yet
                     </div>
