@@ -18,6 +18,7 @@ import { type Parcel } from "@shared/schema";
 import { CreditCard, Activity, Loader2, Plus, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface User {
   id: number;
@@ -59,7 +60,6 @@ const TeamMembersCard = () => {
     </Card>
   );
 };
-
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -147,7 +147,6 @@ export default function Dashboard() {
           </Card>
 
           <TeamMembersCard />
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Marketing Campaigns</CardTitle>
@@ -311,71 +310,6 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
       </main>
-    </div>
-  );
-}
-import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
-import TeamMembersCard from "@/components/TeamMembersCard";
-
-export default function Dashboard() {
-  const { user } = useAuth();
-  
-  const { data: parcels, isLoading } = useQuery({
-    queryKey: ["/api/parcels"],
-    enabled: !!user,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
-      
-      {/* Dashboard Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Stats Cards */}
-        <div className="col-span-2 space-y-6">
-          {/* Parcels Section */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Your Properties</h2>
-            {parcels && parcels.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Parcel cards would go here */}
-              </div>
-            ) : (
-              <div className="bg-muted rounded-lg p-6 text-center">
-                <p className="text-muted-foreground">No properties added yet</p>
-                <button className="mt-4 bg-primary text-white px-4 py-2 rounded-md">
-                  Add Your First Property
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Credits Card */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="font-medium mb-2">Available Credits</h3>
-            <p className="text-2xl font-bold">{user?.credits || 0}</p>
-            <button className="mt-4 w-full bg-primary text-white px-4 py-2 rounded-md">
-              Purchase Credits
-            </button>
-          </div>
-          
-          {/* Team Members Card */}
-          <TeamMembersCard />
-        </div>
-      </div>
     </div>
   );
 }

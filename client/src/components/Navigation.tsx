@@ -94,9 +94,6 @@ export function Navigation() {
                   <DropdownMenuItem onClick={() => navigate("/team-management")}>
                     <Users2 className="mr-2 h-4 w-4" />
                     <span>Team Management</span>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      $10/seat
-                    </span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
