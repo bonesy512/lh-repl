@@ -6,6 +6,7 @@ import { promisify } from "util";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import { createServer } from "http";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,10 +15,35 @@ console.log('Starting server initialization...');
 
 const execAsync = promisify(exec);
 
+// Function to check if port is in use
+async function isPortInUse(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = createServer()
+      .once('error', () => {
+        resolve(true);
+      })
+      .once('listening', () => {
+        server.close();
+        resolve(false);
+      })
+      .listen(port);
+  });
+}
+
+// Function to find available port
+async function findAvailablePort(startPort: number): Promise<number> {
+  let port = startPort;
+  while (await isPortInUse(port)) {
+    port++;
+  }
+  return port;
+}
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Enhanced logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -53,6 +79,7 @@ app.use((req, res, next) => {
     console.log('Registering routes...');
     const server = await registerRoutes(app);
 
+    // Enhanced error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       console.error('Error in request:', err);
       const status = err.status || err.statusCode || 500;
@@ -111,14 +138,26 @@ app.use((req, res, next) => {
       serveStatic(app);
     }
 
-    const port = 5000;
+    // Find available port starting from 5000
+    const port = await findAvailablePort(5000);
+    console.log(`Using port ${port}`);
+
     server.listen({
       port,
       host: "0.0.0.0",
-      reusePort: true,
     }, () => {
       log(`Server started successfully, listening on port ${port}`);
     });
+
+    // Handle graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received. Shutting down gracefully...');
+      server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+      });
+    });
+
   } catch (error) {
     console.error('Failed to start server:', error);
     console.error('Error details:', error instanceof Error ? error.stack : error);

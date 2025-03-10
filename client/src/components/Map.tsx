@@ -1,11 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl';
-import ReactMapGL, { NavigationControl, GeolocateControl, Marker, Popup } from 'react-map-gl';
+import ReactMapGL, {
+  NavigationControl,
+  GeolocateControl,
+  Marker,
+  Popup,
+  MapLayerMouseEvent
+} from 'react-map-gl';
 import { SearchBar } from "./SearchBar";
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import type { Parcel } from '@shared/schema';
 import { useAppStore } from "@/utils/store";
+import { LayerControl } from './map/LayerControl';
+import { MeasurementLayer } from './map/MeasurementLayer';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface PropertyMapProps {
   parcels?: Parcel[];
@@ -20,8 +29,6 @@ export default function PropertyMap({
   loading = false,
   onViewMore
 }: PropertyMapProps) {
-  console.log("PropertyMap received parcels:", parcels); // Debug log
-
   // Center on Texas by default
   const [viewport, setViewport] = useState({
     latitude: 31.9686,
@@ -34,30 +41,38 @@ export default function PropertyMap({
 
   const {
     setViewportCenter,
-    propertyCardVisible,
     selectedProperty,
     setPropertyCardVisible,
     setSelectedProperty,
     shouldCenterMap,
     setShouldCenterMap,
+    activeLayers
   } = useAppStore();
 
   // Center map when requested (e.g. after search)
   useEffect(() => {
     if (shouldCenterMap && selectedProperty) {
       setViewport({
-        latitude: selectedProperty.latitude,
-        longitude: selectedProperty.longitude,
+        latitude: Number(selectedProperty.latitude),
+        longitude: Number(selectedProperty.longitude),
         zoom: 14
       });
       setShouldCenterMap(false);
     }
   }, [shouldCenterMap, selectedProperty]);
 
+  const handleMapClick = (event: MapLayerMouseEvent) => {
+    // Clear selected parcel when clicking on the map
+    if (!event.defaultPrevented) {
+      setSelectedParcel(null);
+    }
+  };
+
   if (!import.meta.env.VITE_MAPBOX_TOKEN) {
+    console.error('Mapbox token not configured');
     return (
       <div className="w-full h-[600px] flex items-center justify-center bg-muted">
-        <p>Mapbox token not configured</p>
+        <p>Map configuration error. Please check your settings.</p>
       </div>
     );
   }
@@ -77,6 +92,11 @@ export default function PropertyMap({
         <SearchBar mapRef={mapRef} />
       </div>
 
+      {/* Layer Control */}
+      <div className="absolute top-4 right-4 z-[3]">
+        <LayerControl />
+      </div>
+
       <ReactMapGL
         ref={mapRef}
         {...viewport}
@@ -84,9 +104,14 @@ export default function PropertyMap({
           setViewport(evt.viewState);
           setViewportCenter([evt.viewState.longitude, evt.viewState.latitude]);
         }}
+        onClick={handleMapClick}
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
-        mapStyle="mapbox://styles/mapbox/streets-v11"
+        mapStyle={activeLayers.includes('satellite') 
+          ? "mapbox://styles/mapbox/satellite-streets-v12"
+          : "mapbox://styles/mapbox/streets-v12"
+        }
         style={{ width: '100%', height: '100%' }}
+        terrain={activeLayers.includes('terrain') ? { source: 'mapbox-dem', exaggeration: 1.5 } : undefined}
       >
         {/* Map Controls */}
         <NavigationControl position="bottom-left" />
@@ -96,11 +121,13 @@ export default function PropertyMap({
           trackUserLocation={true}
         />
 
+        {/* Measurement Layer */}
+        <MeasurementLayer />
+
         {/* Property Markers */}
         {parcels.map((parcel) => {
           const lat = Number(parcel.latitude);
           const lng = Number(parcel.longitude);
-          console.log(`Rendering marker for parcel ${parcel.id} at ${lat}, ${lng}`); // Debug log
 
           if (isNaN(lat) || isNaN(lng)) {
             console.warn(`Invalid coordinates for parcel ${parcel.id}`);
@@ -155,11 +182,12 @@ export default function PropertyMap({
             closeButton={true}
           >
             <div className="p-2">
-              <h3 className="font-semibold">{
-                typeof selectedParcel.address === 'string' 
-                  ? JSON.parse(selectedParcel.address).street 
-                  : selectedParcel.address.street
-              }</h3>
+              <h3 className="font-semibold">
+                {typeof selectedParcel.address === 'string' 
+                  ? selectedParcel.address
+                  : JSON.stringify(selectedParcel.address)
+                }
+              </h3>
               <p className="text-sm text-muted-foreground">
                 {selectedParcel.acres} acres
               </p>

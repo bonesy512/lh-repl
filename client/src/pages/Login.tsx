@@ -9,6 +9,7 @@ export default function Login() {
   const [, navigate] = useLocation();
   const { user, isLoading, loginMutation } = useAuth();
 
+  // Redirect to dashboard if already logged in
   useEffect(() => {
     if (user) {
       navigate("/dashboard");
