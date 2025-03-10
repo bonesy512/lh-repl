@@ -26,40 +26,8 @@ interface User {
   credits: number;
 }
 
-// Added TeamMembersCard component
-const TeamMembersCard = () => {
-  const [teamMembers, setTeamMembers] = useState<string[]>([]); // Placeholder data
-
-  useEffect(() => {
-    // Fetch team members data from API here.  This is a placeholder.
-    const fetchTeamMembers = async () => {
-      try {
-        const response = await fetch('/api/team'); // Replace with your actual API endpoint
-        const data = await response.json();
-        setTeamMembers(data.members);
-      } catch (error) {
-        console.error("Error fetching team members:", error);
-      }
-    };
-    fetchTeamMembers();
-  }, []);
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Team Members</CardTitle>
-        <Users className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <ul>
-          {teamMembers.map((member) => (
-            <li key={member}>{member}</li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
-  );
-};
+// Import TeamMembersCard component
+import TeamMembersCard from "@/components/TeamMembersCard";
 
 export default function Dashboard() {
   const { toast } = useToast();
