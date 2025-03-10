@@ -82,8 +82,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user = await storage.createUser(data);
         } catch (createError) {
           console.error('Error creating user:', createError);
-          // Handle the error explicitly without referencing subscription_tier
-          return res.status(500).json({ message: "Failed to create user account" });
+          return res.status(500).json({ 
+            message: "Failed to create user account",
+            error: createError instanceof Error ? createError.message : String(createError)
+          });
         }
       }
 

@@ -2,7 +2,7 @@ import { pgTable, text, serial, integer, numeric, jsonb, timestamp } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// User table
+// User table - removed all subscription-related fields
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),

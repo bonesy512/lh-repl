@@ -57,3 +57,44 @@ export default function AuthPage() {
     </div>
   );
 }
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { Loader2 } from "lucide-react";
+import { handleWebviewAuth } from "@/lib/webviewAuth";
+
+export default function AuthPage() {
+  const { user, isLoading } = useAuth();
+
+  // Handle webview authentication when this page loads
+  useEffect(() => {
+    console.log("Auth page loaded, user state:", user ? "logged in" : "not logged in");
+    // Initialize the webview auth handler
+    handleWebviewAuth();
+  }, [user]);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+      <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-lg shadow-lg">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Authentication</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {isLoading ? "Verifying your session..." : 
+             user ? "Authentication successful!" : "Authentication in progress..."}
+          </p>
+        </div>
+
+        <div className="flex justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+        
+        <div className="text-center text-sm text-muted-foreground">
+          {user ? (
+            <p>Redirecting you back to the application...</p>
+          ) : (
+            <p>Please wait while we authenticate your account.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
