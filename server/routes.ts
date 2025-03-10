@@ -6,6 +6,8 @@ import { z } from "zod";
 import { insertUserSchema, insertParcelSchema, insertAnalysisSchema, insertCampaignSchema } from "@shared/schema";
 import { TOKEN_PACKAGES } from "../client/src/lib/stripe";
 import admin from "firebase-admin";
+import { generateApiDocsHtml } from './api-docs';
+import { config } from "./config";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -13,15 +15,12 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Import config with validated environment variables
-import { config } from "./config";
-
 // Initialize Firebase Admin
 console.log('Initializing Firebase Admin...');
 try {
   // The private key is already validated in config.ts
   const privateKey = config.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
-  
+
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: "landhacker-9a7c1",
@@ -82,16 +81,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
-        console.log("Creating new user:", data); // Add logging for user creation
         user = await storage.createUser(data);
-        console.log("New user created:", user); //Add logging after user creation
-      } else {
-        console.log("User already exists:", user); //Add logging for existing user
       }
 
       res.json(user);
     } catch (error: any) {
-      console.error('Login error:', error.message, error.stack); //More detailed logging
       res.status(400).json({ message: error.message });
     }
   });
@@ -277,20 +271,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ prices: similarProperties });
     } catch (error: any) {
-      console.error('Error getting acre prices:', error.message, error.stack); //More detailed logging
+      console.error('Error getting acre prices:', error.message, error.stack);
       res.status(400).json({ message: error.message });
     }
   });
 
-
-  // Import API documentation
-  import { generateApiDocsHtml } from './api-docs';
-  
   // Add API documentation route
   app.get('/api/docs', (req, res) => {
-    res.setHeader('Content-Type', 'text/html');
-    res.send(generateApiDocsHtml());
-  });
     res.setHeader('Content-Type', 'text/html');
     res.send(generateApiDocsHtml());
   });
