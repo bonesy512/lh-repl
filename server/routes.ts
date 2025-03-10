@@ -37,34 +37,42 @@ try {
 // Middleware to verify Firebase token
 async function verifyFirebaseToken(req: any, res: any, next: any) {
   try {
+    console.log("▶️ Auth verification started");
+    console.log("Headers:", Object.keys(req.headers));
+    
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      console.error("Unauthorized: Missing or invalid Bearer token in header.");
+      console.error("❌ Unauthorized: Missing or invalid Bearer token in header.");
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const token = authHeader.split('Bearer ')[1];
     if (!token || token === 'undefined' || token === 'null') {
-      console.error("Invalid token format:", token);
+      console.error("❌ Invalid token format:", token);
       return res.status(401).json({ message: "Invalid token format" });
     }
+    
+    console.log("🔑 Got token, verifying...");
 
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
       if (!decodedToken || !decodedToken.uid) {
-        console.error("Token verified but missing UID");
+        console.error("❌ Token verified but missing UID");
         return res.status(401).json({ message: "Invalid token content" });
       }
       req.user = decodedToken;
-      console.log("Firebase token verified successfully for user:", decodedToken.uid);
+      console.log("✅ Firebase token verified successfully for user:", decodedToken.uid);
+      console.log("User data:", JSON.stringify(decodedToken, null, 2));
       next();
     } catch (error: any) {
-      console.error('Firebase token verification failed:', error.message, error.stack);
+      console.error('❌ Firebase token verification failed:', error.message);
+      console.error('Error details:', error.stack);
       const errorMessage = error.message || "Invalid token";
       return res.status(401).json({ message: errorMessage });
     }
   } catch (error: any) {
-    console.error('Error in auth middleware:', error.message, error.stack);
+    console.error('❌ Error in auth middleware:', error.message);
+    console.error('Error details:', error.stack);
     res.status(401).json({ message: "Unauthorized" });
   }
 }

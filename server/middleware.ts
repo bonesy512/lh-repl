@@ -1,6 +1,6 @@
-
 import rateLimit from 'express-rate-limit';
 import { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
 
 // Create a rate limiter for general API requests
 export const apiLimiter = rateLimit({
@@ -58,3 +58,13 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
 
   next();
 };
+
+//This is where the cors middleware should be added in a real application.  The placement is inferred.
+export const corsMiddleware = cors({
+  origin: [
+    'http://localhost:3000', 
+    'http://localhost:5173',
+    /\.replit\.dev$/  // Allow all replit.dev subdomains
+  ],
+  credentials: true
+});
