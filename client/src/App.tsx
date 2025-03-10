@@ -4,13 +4,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { queryClient } from "./lib/queryClient";
-import { Navigation } from "@/components/Navigation";
+import { MainNavigation } from "@/components/MainNavigation";
 import { Footer } from "@/components/Footer";
 import Home from "@/pages/Home";
 import Features from "@/pages/Features";
 import Pricing from "@/pages/Pricing";
 import Dashboard from "@/pages/Dashboard";
-import App from "@/pages/App";
+import AppPage from "@/pages/App"; //Renamed to avoid conflict
 import TeamManagement from "@/pages/TeamManagement";
 import Login from "@/pages/Login";
 import Auth from "@/pages/Auth";
@@ -24,7 +24,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 function Router() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Navigation />
+      <MainNavigation />
       <main className="flex-1">
         <Switch>
           <Route path="/" component={Home} />
@@ -34,7 +34,7 @@ function Router() {
           <Route path="/auth" component={Auth} />
           <Route path="/beta" component={BetaLanding} />
           <ProtectedRoute path="/dashboard" component={Dashboard} />
-          <ProtectedRoute path="/app" component={App} />
+          <ProtectedRoute path="/app" component={AppPage} />
           <ProtectedRoute path="/team-management" component={TeamManagement} />
           <ProtectedRoute path="/purchase-tokens" component={PurchaseTokens} />
           <ProtectedRoute path="/membership" component={Membership} />
