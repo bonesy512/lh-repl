@@ -1,4 +1,3 @@
-// Update the initialization and auth flow handling
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithRedirect, GoogleAuthProvider, User, browserLocalPersistence, setPersistence, getRedirectResult } from "firebase/auth";
 import { getDatabase, ref, get, set } from "firebase/database";
@@ -82,6 +81,8 @@ async function handleRedirectResult() {
         displayName: result.user.displayName
       });
       return result.user;
+    } else {
+      console.log("No redirect result found");
     }
   } catch (error: any) {
     console.error('Redirect sign-in error:', error.message, error.stack);

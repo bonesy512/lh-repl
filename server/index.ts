@@ -119,8 +119,21 @@ async function initializeServer() {
   }
 }
 
+// Kill any existing process on port 5000 before starting
+async function killExistingProcess() {
+  try {
+    console.log('Checking for existing process on port 5000...');
+    await execAsync('lsof -t -i:5000 | xargs kill -9');
+    console.log('Killed existing process on port 5000');
+  } catch (error) {
+    // Ignore error if no process was found
+    console.log('No existing process found on port 5000');
+  }
+}
+
 // Start the server
-initializeServer()
+killExistingProcess()
+  .then(() => initializeServer())
   .then(server => {
     const port = 5000;
     server.listen({
