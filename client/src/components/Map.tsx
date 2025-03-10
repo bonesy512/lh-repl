@@ -14,6 +14,7 @@ import { Loader2 } from 'lucide-react';
 import type { Parcel } from '@shared/schema';
 import { useAppStore } from "@/utils/store";
 import { LayerControl } from "./map/LayerControl";
+import { GeolocateControl, NavigationControl, Source, Layer } from "react-map-gl";
 
 interface PropertyMapProps {
   parcels?: Parcel[];
@@ -21,6 +22,64 @@ interface PropertyMapProps {
   loading?: boolean;
   onViewMore?: () => void;
 }
+
+interface MapSourceLayer {
+  id: string;
+  type: "fill" | "line" | "symbol" | "circle" | "heatmap";
+  paint: any;
+  layout?: any;
+  filter?: any[];
+}
+
+const LAYER_STYLES: Record<string, MapSourceLayer[]> = {
+  "parcel-boundaries": [
+    {
+      id: "parcel-lines",
+      type: "line",
+      paint: {
+        "line-color": "#4A90E2",
+        "line-width": 2,
+        "line-opacity": 0.8
+      }
+    }
+  ],
+  "building-footprints": [
+    {
+      id: "building-fills",
+      type: "fill",
+      paint: {
+        "fill-color": "#FF9800",
+        "fill-opacity": 0.2
+      }
+    },
+    {
+      id: "building-lines",
+      type: "line",
+      paint: {
+        "line-color": "#FF9800",
+        "line-width": 1
+      }
+    }
+  ],
+  "zoning": [
+    {
+      id: "zoning-fills",
+      type: "fill",
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "zone_type"],
+          "residential", "#A5D6A7",
+          "commercial", "#90CAF9",
+          "industrial", "#FFCC80",
+          "agricultural", "#C5E1A5",
+          "#E0E0E0" // default color
+        ],
+        "fill-opacity": 0.3
+      }
+    }
+  ]
+};
 
 export default function PropertyMap({
   parcels = [],
@@ -34,10 +93,10 @@ export default function PropertyMap({
     zoom: 3
   });
 
-  console.log("PropertyMap render:", { 
+  console.log("PropertyMap render:", {
     parcelCount: parcels?.length || 0,
     loading,
-    viewPort: viewport 
+    viewPort: viewport
   });
 
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
@@ -56,7 +115,8 @@ export default function PropertyMap({
     setSelectedProperty,
     shouldCenterMap,
     setShouldCenterMap,
-    setIsLoadingProperty
+    setIsLoadingProperty,
+    activeLayers
   } = useAppStore();
 
   // Center map when requested (e.g. after search)
@@ -97,6 +157,26 @@ export default function PropertyMap({
     );
   }
 
+  const renderMapLayers = () => {
+    return activeLayers.map(layerId => {
+      if (LAYER_STYLES[layerId]) {
+        return (
+          <Source
+            key={layerId}
+            id={`source-${layerId}`}
+            type="geojson"
+            data={`/api/geojson/${layerId}`}
+          >
+            {LAYER_STYLES[layerId].map(layer => (
+              <Layer key={layer.id} {...layer} />
+            ))}
+          </Source>
+        );
+      }
+      return null;
+    });
+  };
+
   return (
     <div className="w-full h-[600px] relative">
       {/* Search Bar - Updated with better mobile responsiveness */}
@@ -107,6 +187,13 @@ export default function PropertyMap({
       {/* Map Controls */}
       <div className="absolute bottom-[175px] left-2.5 z-[1] flex flex-col gap-2">
         <LayerControl />
+        <NavigationControl />
+        <GeolocateControl
+          positionOptions={{ enableHighAccuracy: true }}
+          trackUserLocation
+          showUserLocation
+          showAccuracyCircle
+        />
         <MeasurementControls />
       </div>
 
@@ -126,10 +213,7 @@ export default function PropertyMap({
       <ReactMapGL
         ref={mapRef}
         {...viewport}
-        onMove={evt => {
-          setViewport(evt.viewState);
-          setViewportCenter([evt.viewState.longitude, evt.viewState.latitude]);
-        }}
+        onMove={evt => setViewport(evt.viewState)}
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
         mapStyle="mapbox://styles/mapbox/streets-v11"
         style={{ width: '100%', height: '100%' }}
@@ -139,18 +223,7 @@ export default function PropertyMap({
           }
         }}
       >
-        {/* Measurement Layer */}
-        <MeasurementLayer />
-
-        {/* Map Controls */}
-        <NavigationControl position="bottom-left" />
-        <GeolocateControl
-          position="bottom-left"
-          positionOptions={{ enableHighAccuracy: true }}
-          trackUserLocation={true}
-        />
-
-        {/* Property Markers */}
+        {renderMapLayers()}
         {parcels.map((parcel) => {
           // Add type checking for required parcel properties
           if (!parcel?.latitude || !parcel?.longitude) {
@@ -209,7 +282,6 @@ export default function PropertyMap({
           );
         })}
 
-        {/* Selected Property Popup */}
         {selectedParcel && (
           <Popup
             latitude={Number(selectedParcel.latitude)}

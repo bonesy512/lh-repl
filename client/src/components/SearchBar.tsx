@@ -4,23 +4,32 @@ import { useState, useEffect, useRef } from "react";
 import type { MapRef } from 'react-map-gl';
 import { Loader2 } from 'lucide-react';
 
-// Define types properly
-interface Address {
-  streetAddress: string;
-  city: string;
-  state: string;
-  zipcode: string;
-}
-
+// Define comprehensive property details interface
 interface PropertyDetailsResponse {
   id: string;
   propertyId: string;
-  address: Address;
+  address: {
+    streetAddress: string;
+    city: string;
+    state: string;
+    zipcode: string;
+  };
+  owner?: {
+    name: string;
+    mailingAddress: string;
+  };
+  parcelInfo?: {
+    acreage: number;
+    squareFootage: number;
+    schoolDistrict: string;
+    salePrice?: number;
+    saleDate?: string;
+    zoning?: string;
+  };
   latitude: number;
   longitude: number;
   distanceToCity?: string;
   timeToCity?: string;
-  priceComparisons?: any;
   zpid?: number;
   isSaved?: boolean;
 }
@@ -55,7 +64,7 @@ export function SearchBar({ onSearch, mapRef }: Props) {
 
     searchTimeout.current = setTimeout(() => {
       handleSearch(query);
-    }, 500);
+    }, 300); // Reduced debounce time for better responsiveness
 
     return () => {
       if (searchTimeout.current) {
@@ -139,6 +148,28 @@ export function SearchBar({ onSearch, mapRef }: Props) {
             isSaved: false
           };
 
+          // Fetch additional property details
+          try {
+            const propertyResponse = await fetch(`/api/property-details`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                latitude: propertyResult.latitude,
+                longitude: propertyResult.longitude,
+                address: propertyResult.address
+              })
+            });
+
+            if (propertyResponse.ok) {
+              const propertyData = await propertyResponse.json();
+              Object.assign(propertyResult, propertyData);
+            }
+          } catch (error) {
+            console.error('Failed to fetch property details:', error);
+          }
+
           // Add distance to city information
           try {
             const distanceResponse = await fetch(`/api/distance-to-city`, {
@@ -183,7 +214,7 @@ export function SearchBar({ onSearch, mapRef }: Props) {
     <div className="relative w-full">
       <Command className="w-full overflow-visible rounded-lg border shadow-lg">
         <CommandInput
-          placeholder="Search by address"
+          placeholder="Search by address or coordinates"
           value={query}
           onValueChange={setQuery}
           disabled={loading}
@@ -231,6 +262,11 @@ export function SearchBar({ onSearch, mapRef }: Props) {
                         .filter(Boolean)
                         .join(', ')}
                     </div>
+                    {result.parcelInfo && (
+                      <div className="text-sm text-muted-foreground">
+                        {result.parcelInfo.acreage} acres • {result.parcelInfo.squareFootage} sq ft
+                      </div>
+                    )}
                     {result.distanceToCity && result.timeToCity && (
                       <div className="text-sm text-muted-foreground">
                         {result.distanceToCity} ({result.timeToCity} drive)
