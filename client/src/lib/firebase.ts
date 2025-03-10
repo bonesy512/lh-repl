@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider, User } from "firebase/auth";
+import { getAuth, signInWithRedirect, GoogleAuthProvider, User, getRedirectResult } from "firebase/auth";
 import { getDatabase, ref, get, set, query, orderByChild, equalTo } from "firebase/database";
 
 const firebaseConfig = {
@@ -32,12 +32,10 @@ export async function getPropertyQuery(userId: string, propertyId: string) {
   return snapshot.exists() ? snapshot.val() : null;
 }
 
-export async function signInWithGoogle(): Promise<User> {
+export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   try {
-    const result = await signInWithPopup(auth, provider);
-    console.log("Google sign in successful:", result.user);
-    return result.user;
+    await signInWithRedirect(auth, provider);
   } catch (error: any) {
     console.error("Google sign in error:", error);
     throw error;
@@ -48,33 +46,22 @@ export function signOut() {
   return auth.signOut();
 }
 
+// Handle redirect result
+export async function handleRedirectResult() {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) {
+      console.log("Redirect result successful:", result.user);
+      return result.user;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error handling redirect result:", error);
+    throw error;
+  }
+}
+
 // Set up Firebase auth state observer
 auth.onAuthStateChanged((user) => {
   console.log("Auth state changed:", user ? "User logged in" : "User logged out");
-  if (user) {
-    // Add Firebase token to all API requests
-    const originalFetch = window.fetch;
-    window.fetch = async (...args) => {
-      const [resource, config] = args;
-
-      if (typeof resource === 'string' && resource.startsWith('/api')) {
-        try {
-          const token = await user.getIdToken();
-          const modifiedConfig = {
-            ...config,
-            headers: {
-              ...config?.headers,
-              "Authorization": `Bearer ${token}`,
-            },
-          };
-          return originalFetch(resource, modifiedConfig);
-        } catch (error) {
-          console.error("Error getting Firebase token:", error);
-          return originalFetch(resource, config);
-        }
-      }
-
-      return originalFetch(resource, config);
-    };
-  }
 });
