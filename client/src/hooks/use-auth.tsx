@@ -98,15 +98,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log("Proceeding with Google sign in");
-      const googleUser = await signInWithGoogle();
-      console.log("Google sign in completed:", { uid: googleUser.uid });
+      try {
+        const googleUser = await signInWithGoogle();
+        console.log("Google sign in completed:", { uid: googleUser.uid });
 
-      const res = await apiRequest("POST", "/api/auth/login", {
-        uid: googleUser.uid,
-        email: googleUser.email,
-        displayName: googleUser.displayName,
-      });
-      return await res.json();
+        const res = await apiRequest("POST", "/api/auth/login", {
+          uid: googleUser.uid,
+          email: googleUser.email,
+          displayName: googleUser.displayName,
+        });
+        return await res.json();
+      } catch (error: any) {
+        console.error("Login error:", error);
+        throw error;
+      }
     },
     onSuccess: (user: User) => {
       console.log("Login successful:", user);
@@ -169,8 +174,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
 
-  if (context === undefined)
+  if (!context) {
     throw new Error("useAuth must be used within a AuthProvider");
+  }
 
   return context;
 }
