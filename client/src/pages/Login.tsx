@@ -28,36 +28,39 @@ export default function Login() {
       setLoading(true);
       setError(null);
       console.log("Starting Google sign-in process...");
+
+      // Check if in webview
+      const isWebView = window.parent !== window;
+      if (isWebView) {
+        console.log("In webview, opening auth in new tab");
+        window.open(`${window.location.origin}/auth`, '_blank');
+        return;
+      }
+
       const user = await signInWithGoogle();
       console.log("Google sign-in successful:", user);
 
-      // Create or verify user in our backend
-      console.log("Verifying user with backend...");
-      console.log("Making POST request to /api/auth/login", {
-        firebaseUid: user.uid,
-        email: user.email,
-        username: user.displayName
-      });
+      // Only proceed with backend auth if we have a valid user
+      if (user?.uid) {
+        console.log("Verifying user with backend...");
+        const response = await apiRequest("POST", "/api/auth/login", {
+          firebaseUid: user.uid,
+          email: user.email,
+          username: user.displayName,
+        });
 
-      const response = await apiRequest("POST", "/api/auth/login", {
-        firebaseUid: user.uid,
-        email: user.email,
-        username: user.displayName,
-      });
+        const userData = await response.json();
+        console.log("Backend authentication response:", userData);
 
-      const userData = await response.json();
-      console.log("Backend authentication response:", userData);
+        if (!userData) {
+          throw new Error("Failed to authenticate with backend");
+        }
 
-      if (!userData) {
-        throw new Error("Failed to authenticate with backend");
+        // Update auth state
+        queryClient.setQueryData(["/api/user"], userData);
+        console.log("Updated query cache with user data");
+        navigate("/dashboard");
       }
-
-      // Update auth state
-      queryClient.setQueryData(["/api/user"], userData);
-      console.log("Updated query cache with user data");
-
-      console.log("Backend verification successful");
-      navigate("/dashboard");
     } catch (error: any) {
       console.error("Login failed:", error);
       const errorMessage = error.message || "An error occurred during login";
