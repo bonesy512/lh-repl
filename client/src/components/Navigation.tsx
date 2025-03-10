@@ -32,6 +32,8 @@ export function Navigation() {
     .join("")
     .toUpperCase() || "?";
 
+  console.log("Rendering Navigation with user:", user); // Debug log
+
   return (
     <header className="border-b">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
