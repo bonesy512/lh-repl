@@ -1,10 +1,8 @@
 import { Switch, Route } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { queryClient } from "./lib/queryClient";
-import { Footer } from "@/components/Footer";
 import Home from "@/pages/Home";
 import Features from "@/pages/Features";
 import Pricing from "@/pages/Pricing";
@@ -18,7 +16,6 @@ import NotFound from "@/pages/not-found";
 import PurchaseTokens from "@/pages/PurchaseTokens";
 import Membership from "@/pages/Membership";
 import Settings from "@/pages/Settings";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function Router() {
   return (
@@ -31,16 +28,15 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/auth" component={Auth} />
           <Route path="/beta" component={BetaLanding} />
-          <ProtectedRoute path="/dashboard" component={Dashboard} />
-          <ProtectedRoute path="/app" component={AppPage} />
-          <ProtectedRoute path="/team-management" component={TeamManagement} />
-          <ProtectedRoute path="/purchase-tokens" component={PurchaseTokens} />
-          <ProtectedRoute path="/membership" component={Membership} />
-          <ProtectedRoute path="/settings" component={Settings} />
+          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/app" component={AppPage} />
+          <Route path="/team-management" component={TeamManagement} />
+          <Route path="/purchase-tokens" component={PurchaseTokens} />
+          <Route path="/membership" component={Membership} />
+          <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
       </main>
-      <Footer />
     </div>
   );
 }
@@ -49,10 +45,8 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark">
-        <AuthProvider>
-          <Router />
-          <Toaster />
-        </AuthProvider>
+        <Router />
+        <Toaster />
       </ThemeProvider>
     </QueryClientProvider>
   );
