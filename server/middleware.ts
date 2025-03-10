@@ -23,7 +23,7 @@ export const authLimiter = rateLimit({
   message: { message: 'Too many login attempts, please try again later.' },
 });
 
-// CORS middleware with proper configuration
+// Updated CORS middleware to handle credentials
 export const corsMiddleware = cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
@@ -57,18 +57,26 @@ export const corsMiddleware = cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-CSRF-Token',
+    'X-Requested-With',
+    'Accept',
+    'Origin'
+  ]
 });
 
-// Configure session middleware
+// Configure session middleware with proper cookie settings
 export const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'landhacker-session-secret',
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
   cookie: { 
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: 'lax'
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 });
 
@@ -145,6 +153,7 @@ export const cspMiddleware = expressCspHeader({
     'script-src': [
       "'self'", 
       "'unsafe-inline'",
+      "'unsafe-eval'", // Required for some JavaScript functionality
       "https://apis.google.com",
       "https://*.stripe.com",
       "https://*.firebaseapp.com",
@@ -155,14 +164,18 @@ export const cspMiddleware = expressCspHeader({
       "'self'", 
       "data:", 
       "https://*.googleusercontent.com",
-      "https://*.stripe.com"
+      "https://*.stripe.com",
+      "https://api.mapbox.com",
+      "https://maps.googleapis.com"
     ],
     'connect-src': [
       "'self'", 
       "https://*.googleapis.com",
       "https://firebaseinstallations.googleapis.com",
       "https://*.stripe.com",
-      "https://*.firebaseio.com"
+      "https://*.firebaseio.com",
+      "https://api.mapbox.com",
+      "wss://*.firebaseio.com"
     ],
     'frame-src': [
       "'self'", 
