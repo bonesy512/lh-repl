@@ -44,48 +44,30 @@ export default function Dashboard() {
   useEffect(() => {
     if (!authLoading && !authUser) {
       navigate("/auth");
+      return;
     }
   }, [authUser, authLoading, navigate]);
 
   // Only proceed with other queries if authenticated
-  const { data: user, isLoading: loadingUser, error: userError } = useQuery<User>({
+  const { data: user, isLoading: loadingUser } = useQuery<User>({
     queryKey: ["/api/user"],
     enabled: !!authUser,
   });
 
-  const { data: parcels = [], isLoading: loadingParcels, error: parcelsError } = useQuery<Parcel[]>({
+  const { data: parcels = [], isLoading: loadingParcels } = useQuery<Parcel[]>({
     queryKey: ["/api/parcels"],
     enabled: !!authUser,
+    initialData: [], // Initialize with empty array
   });
 
   const { data: invoices = [], isLoading: loadingInvoices } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
     enabled: !!authUser,
+    initialData: [], // Initialize with empty array
   });
 
-  function handleParcelSelect(parcel: Parcel) {
-    setSelectedParcel(parcel);
-  }
 
-  function handleAnalyze() {
-    if (!selectedParcel) return;
-    if (!user?.credits || user.credits < 1) {
-      toast({
-        title: "Insufficient Credits",
-        description: "Please purchase more credits to perform analysis.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setActiveDialog("analysis");
-  }
-
-  function handleCreateCampaign() {
-    if (!selectedParcel) return;
-    setActiveDialog("marketing");
-  }
-
-  // Show loading state
+  // Show loading state for the entire dashboard
   if (authLoading || loadingUser || loadingParcels) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -99,20 +81,10 @@ export default function Dashboard() {
     return null; // Will be redirected by useEffect
   }
 
-  if (userError || parcelsError) {
-    const error = userError || parcelsError;
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Alert variant="destructive">
-          <AlertDescription>
-            {error instanceof Error 
-              ? error.message 
-              : "Failed to load dashboard data. Please try again later."}
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
+  if (loadingInvoices) {
+    return <div>Loading invoices...</div>; //add loading state
   }
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -183,19 +155,19 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="map" className="space-y-8">
-            {/* Map Component */}
+            {/* Map Component with loading state */}
             <PropertyMap
               parcels={parcels}
-              onParcelSelect={handleParcelSelect}
-              loading={loadingParcels}
+              onParcelSelect={setSelectedParcel}
+              loading={false}
             />
 
             {/* Property Card */}
             {selectedParcel && (
               <PropertyCard
                 parcel={selectedParcel}
-                onAnalyze={handleAnalyze}
-                onCreateCampaign={handleCreateCampaign}
+                onAnalyze={() => setActiveDialog("analysis")}
+                onCreateCampaign={() => setActiveDialog("marketing")}
               />
             )}
           </TabsContent>

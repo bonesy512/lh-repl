@@ -91,6 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(user);
     } catch (error: any) {
+      console.error('Error fetching user:', error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -106,6 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parcels = await storage.getParcels(user.id);
       res.json(parcels);
     } catch (error: any) {
+      console.error('Error fetching parcels:', error);
       res.status(500).json({ message: error.message });
     }
   });
