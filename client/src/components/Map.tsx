@@ -1,19 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl';
 import ReactMapGL, { NavigationControl, GeolocateControl, Marker, Source, Layer, Popup } from 'react-map-gl';
-import { MeasurementLayer } from "./map/MeasurementLayer";
-import { MeasurementControls } from "./map/MeasurementControls";
-import { MeasurementCard } from "./map/MeasurementCard";
-import { PropertyCard } from "./PropertyCard";
 import { SearchBar } from "./SearchBar";
-import MapboxDraw from "@mapbox/mapbox-gl-draw";
-import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
-import "mapbox-gl/dist/mapbox-gl.css";
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import type { Parcel } from '@shared/schema';
 import { useAppStore } from "@/utils/store";
-import { LayerControl } from "./map/LayerControl";
 
 interface PropertyMapProps {
   parcels?: Parcel[];
@@ -28,29 +20,24 @@ export default function PropertyMap({
   loading = false,
   onViewMore
 }: PropertyMapProps) {
+  // Center on Texas by default
   const [viewport, setViewport] = useState({
-    latitude: 39.8283,
-    longitude: -98.5795,
-    zoom: 3
+    latitude: 31.9686,
+    longitude: -99.9018,
+    zoom: 5
   });
 
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
   const mapRef = useRef<MapRef>(null);
 
   const {
-    measurementMode,
-    setMeasurementMode,
-    addCompletedMeasurement,
-    clearMeasurements,
     setViewportCenter,
-    addMeasurementPoint,
     propertyCardVisible,
     selectedProperty,
     setPropertyCardVisible,
     setSelectedProperty,
     shouldCenterMap,
     setShouldCenterMap,
-    setIsLoadingProperty
   } = useAppStore();
 
   // Center map when requested (e.g. after search)
@@ -81,83 +68,12 @@ export default function PropertyMap({
     );
   }
 
-  // Assuming activeLayers is defined elsewhere in the component
-  const activeLayers = ["terrain", "satellite", "parcel-boundaries"]; //Example, replace with actual logic
-
   return (
     <div className="w-full h-[600px] relative">
       {/* Search Bar */}
       <div className="absolute top-4 left-4 z-[3] w-[400px] max-w-[calc(100vw-2rem)]">
         <SearchBar mapRef={mapRef} />
       </div>
-
-      {/* Map Layers */}
-      {activeLayers.includes("terrain") && (
-        <Source
-          id="terrain"
-          type="raster-dem"
-          url="mapbox://mapbox.mapbox-terrain-dem-v1"
-        >
-          <Layer
-            id="terrain-data"
-            type="hillshade"
-            paint={{
-              "hillshade-exaggeration": 0.6
-            }}
-          />
-        </Source>
-      )}
-
-      {activeLayers.includes("satellite") && (
-        <Source
-          id="satellite"
-          type="raster"
-          url="mapbox://mapbox.satellite"
-        >
-          <Layer
-            id="satellite-layer"
-            type="raster"
-          />
-        </Source>
-      )}
-
-      {activeLayers.includes("parcel-boundaries") && (
-        <Source
-          id="parcel-boundaries"
-          type="vector"
-          url="mapbox://mapbox.boundaries-adm2"
-        >
-          <Layer
-            id="parcel-lines"
-            type="line"
-            source-layer="boundaries_admin_2"
-            paint={{
-              "line-color": "#FF0000",
-              "line-width": 1
-            }}
-          />
-        </Source>
-      )}
-
-
-      {/* Measurement Controls */}
-      <div className="absolute bottom-[175px] left-2.5 z-[1] flex flex-col gap-2">
-        <LayerControl />
-        <MeasurementControls />
-      </div>
-
-      {measurementMode !== 'none' && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl pl-8 z-[2]">
-          <MeasurementCard />
-        </div>
-      )}
-
-      {/* Property Card */}
-      {propertyCardVisible && selectedProperty && (
-        <div className="absolute top-4 right-4 z-[3] w-[400px] max-w-[calc(100vw-2rem)]">
-          <PropertyCard onViewMore={onViewMore} />
-        </div>
-      )}
 
       <ReactMapGL
         ref={mapRef}
@@ -169,16 +85,7 @@ export default function PropertyMap({
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
         mapStyle="mapbox://styles/mapbox/streets-v11"
         style={{ width: '100%', height: '100%' }}
-        onClick={(evt) => {
-          // If in measurement mode, add point
-          if (measurementMode !== 'none') {
-            addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
-          }
-        }}
       >
-        {/* Measurement Layer */}
-        <MeasurementLayer />
-
         {/* Map Controls */}
         <NavigationControl position="bottom-left" />
         <GeolocateControl
@@ -193,27 +100,18 @@ export default function PropertyMap({
             key={parcel.id}
             latitude={Number(parcel.latitude)}
             longitude={Number(parcel.longitude)}
-            onClick={evt => {
-              if (measurementMode !== 'none') {
-                addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
-              } else {
-                setSelectedParcel(parcel);
-                setSelectedProperty({
-                  propertyId: parcel.id,
-                  address: {
-                    streetAddress: parcel.address,
-                    city: parcel.city,
-                    state: parcel.state,
-                    zipcode: parcel.zipcode
-                  },
-                  ownerName: parcel.ownerName,
-                  latitude: Number(parcel.latitude),
-                  longitude: Number(parcel.longitude)
-                });
-                setPropertyCardVisible(true);
-                if (onParcelSelect) {
-                  onParcelSelect(parcel);
-                }
+            onClick={e => {
+              e.originalEvent.stopPropagation();
+              setSelectedParcel(parcel);
+              setSelectedProperty({
+                propertyId: parcel.id,
+                address: parcel.address,
+                latitude: Number(parcel.latitude),
+                longitude: Number(parcel.longitude)
+              });
+              setPropertyCardVisible(true);
+              if (onParcelSelect) {
+                onParcelSelect(parcel);
               }
             }}
           >
