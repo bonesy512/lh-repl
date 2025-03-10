@@ -291,6 +291,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.setHeader('Content-Type', 'text/html');
     res.send(generateApiDocsHtml());
   });
+    res.setHeader('Content-Type', 'text/html');
+    res.send(generateApiDocsHtml());
+  });
 
   const httpServer = createServer(app);
   return httpServer;
