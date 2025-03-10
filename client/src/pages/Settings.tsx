@@ -74,7 +74,6 @@ export default function Settings() {
                 <form onSubmit={handleSaveProfile} className="space-y-6">
                   <div className="flex items-center space-x-4">
                     <Avatar className="h-20 w-20">
-                      <AvatarImage src={user?.avatarUrl} />
                       <AvatarFallback>{userInitials}</AvatarFallback>
                     </Avatar>
                     <Button variant="outline">Change Avatar</Button>

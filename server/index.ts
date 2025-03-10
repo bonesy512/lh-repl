@@ -22,6 +22,11 @@ async function initializeServer() {
     // Set trust proxy first before any other middleware
     app.set('trust proxy', 1);
 
+    // Add health check endpoint
+    app.get('/health', (req, res) => {
+      res.status(200).send('OK');
+    });
+
     // Import middleware
     console.log('Importing and configuring middleware...');
     const { apiLimiter, authLimiter, errorHandler, requestLogger, corsMiddleware } = await import('./middleware');
@@ -60,50 +65,51 @@ async function initializeServer() {
     const server = await registerRoutes(app);
 
     // Error handling middleware
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error('Error in request:', err);
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      res.status(status).json({ message });
-    });
+    app.use(errorHandler);
 
     // Handle static file serving based on environment
     if (process.env.REPL_ID) {
       console.log('Running in Replit environment...');
-      try {
-        console.log('Building client...');
-        const publicDir = path.resolve(__dirname, 'public');
-        const distDir = path.resolve(__dirname, '..', 'dist', 'public');
 
-        if (!fs.existsSync(publicDir)) {
-          fs.mkdirSync(publicDir, { recursive: true });
-        }
+      // Skip build if files already exist
+      const publicDir = path.resolve(__dirname, 'public');
+      if (!fs.existsSync(publicDir) || !fs.readdirSync(publicDir).length) {
+        try {
+          console.log('Building client...');
+          const distDir = path.resolve(__dirname, '..', 'dist', 'public');
 
-        const rootDir = path.resolve(__dirname, '..');
-        process.chdir(rootDir);
-
-        await execAsync('npm run build');
-        console.log('Client built successfully');
-
-        if (fs.existsSync(distDir)) {
-          await execAsync(`cp -r ${distDir}/* ${publicDir}/`);
-          console.log('Static files copied successfully');
-        } else {
-          console.log('Checking alternative build directory...');
-          const altDistDir = path.resolve(__dirname, '..', 'dist');
-          if (fs.existsSync(altDistDir)) {
-            await execAsync(`cp -r ${altDistDir}/* ${publicDir}/`);
-            console.log('Static files copied from alternate location');
-          } else {
-            throw new Error('Build directory not found');
+          if (!fs.existsSync(publicDir)) {
+            fs.mkdirSync(publicDir, { recursive: true });
           }
-        }
 
-        serveStatic(app);
-      } catch (buildError) {
-        console.error('Build process failed:', buildError);
-        throw buildError;
+          const rootDir = path.resolve(__dirname, '..');
+          process.chdir(rootDir);
+
+          await execAsync('npm run build');
+          console.log('Client built successfully');
+
+          if (fs.existsSync(distDir)) {
+            await execAsync(`cp -r ${distDir}/* ${publicDir}/`);
+            console.log('Static files copied successfully');
+          } else {
+            console.log('Checking alternative build directory...');
+            const altDistDir = path.resolve(__dirname, '..', 'dist');
+            if (fs.existsSync(altDistDir)) {
+              await execAsync(`cp -r ${altDistDir}/* ${publicDir}/`);
+              console.log('Static files copied from alternate location');
+            } else {
+              throw new Error('Build directory not found');
+            }
+          }
+        } catch (buildError) {
+          console.error('Build process failed:', buildError);
+          throw buildError;
+        }
+      } else {
+        console.log('Static files already exist, skipping build step');
       }
+
+      serveStatic(app);
     } else if (app.get("env") === "development") {
       console.log('Setting up Vite for development...');
       await setupVite(app, server);

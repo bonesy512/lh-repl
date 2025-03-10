@@ -18,6 +18,7 @@ import BetaLanding from "@/pages/BetaLanding";
 import NotFound from "@/pages/not-found";
 import Subscription from "@/pages/Subscription";
 import PurchaseTokens from "@/pages/PurchaseTokens";
+import Settings from "@/pages/Settings";
 import './App.css';
 
 function Router() {
@@ -42,6 +43,7 @@ function Router() {
           <Route path="/beta" component={BetaLanding} />
           <Route path="/subscription" component={Subscription} />
           <Route path="/purchase-tokens" component={PurchaseTokens} />
+          <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
       </main>

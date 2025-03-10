@@ -59,12 +59,38 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
   next();
 };
 
-//This is where the cors middleware should be added in a real application.  The placement is inferred.
+// Update CORS configuration to handle both webview and external access
 export const corsMiddleware = cors({
-  origin: [
-    'http://localhost:3000', 
-    'http://localhost:5173',
-    /\.replit\.dev$/  // Allow all replit.dev subdomains
-  ],
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      /\.replit\.dev$/,  // Allow all replit.dev subdomains
+      /\.replit\.app$/   // Allow all replit.app subdomains
+    ];
+
+    // Check if the origin matches any of our allowed patterns
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return allowedOrigin === origin;
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`Origin: ${origin} not allowed by CORS`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 });

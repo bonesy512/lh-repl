@@ -45,16 +45,20 @@ try {
 export const auth = getAuth(app);
 export const db = getDatabase(app);
 
-// Set persistence to LOCAL only if not in webview
+// Enhanced logging for persistence setup
 console.log('Setting Firebase persistence to LOCAL...');
 try {
   const isWebView = window.parent !== window;
+  console.log('Environment check:', { 
+    isWebView, 
+    userAgent: window.navigator.userAgent,
+    parentLocation: isWebView ? 'Different from window' : 'Same as window'
+  });
 
   if (!isWebView) {
     setPersistence(auth, browserLocalPersistence)
       .then(() => {
         console.log("Firebase persistence set successfully");
-        // Check for redirect result on page load
         return handleRedirectResult();
       })
       .catch((error) => {
@@ -70,22 +74,33 @@ try {
   console.error('Failed to set persistence:', error);
 }
 
-// Handle redirect result
+// Handle redirect result with enhanced logging
 async function handleRedirectResult() {
+  console.log("Attempting to handle redirect result...");
   try {
+    console.log("Calling getRedirectResult...");
     const result = await getRedirectResult(auth);
+    console.log("getRedirectResult response:", result);
+
     if (result) {
       console.log("Redirect sign-in successful:", {
         uid: result.user.uid,
         email: result.user.email,
-        displayName: result.user.displayName
+        displayName: result.user.displayName,
+        isNewUser: result._tokenResponse?.isNewUser
       });
       return result.user;
     } else {
-      console.log("No redirect result found");
+      console.log("No redirect result found - This is normal if not coming from a redirect");
     }
   } catch (error: any) {
-    console.error('Redirect sign-in error:', error.message, error.stack);
+    console.error('Redirect sign-in error:', {
+      code: error.code,
+      message: error.message,
+      stack: error.stack,
+      authDomain: firebaseConfig.authDomain,
+      currentDomain
+    });
     handleAuthError(error);
   }
 }
@@ -105,6 +120,8 @@ function handleAuthError(error: any) {
 
 export async function signInWithGoogle(): Promise<User> {
   console.log("Starting Google sign-in process...");
+  const isWebView = window.parent !== window;
+  console.log("Sign-in environment:", { isWebView, currentDomain });
 
   // Initialize Google Auth Provider with custom parameters
   const provider = new GoogleAuthProvider();
@@ -122,7 +139,11 @@ export async function signInWithGoogle(): Promise<User> {
     // The page will redirect to Google at this point
     return {} as User; // This line won't actually execute due to the redirect
   } catch (error: any) {
-    console.error('Google sign in error:', error.message, error.stack);
+    console.error('Google sign in error:', {
+      code: error.code,
+      message: error.message,
+      stack: error.stack
+    });
     handleAuthError(error);
     throw error;
   }
@@ -133,7 +154,12 @@ export function signOut() {
   return auth.signOut();
 }
 
-// Set up Firebase auth state observer
+// Set up Firebase auth state observer with enhanced logging
 auth.onAuthStateChanged((user) => {
-  console.log("Auth state changed:", user ? "User logged in" : "User logged out");
+  console.log("Auth state changed:", {
+    status: user ? "User logged in" : "User logged out",
+    userId: user?.uid,
+    email: user?.email,
+    displayName: user?.displayName
+  });
 });
