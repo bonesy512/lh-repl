@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithRedirect, GoogleAuthProvider, User, browserLocalPersistence, setPersistence, getRedirectResult } from "firebase/auth";
-import { getDatabase, ref, get, set } from "firebase/database";
+import { getAuth, signInWithRedirect, GoogleAuthProvider, getRedirectResult } from "firebase/auth";
+import { getDatabase } from "firebase/database";
 
 // Verify Firebase configuration
 const requiredEnvVars = [
@@ -15,9 +15,6 @@ requiredEnvVars.forEach(varName => {
   }
 });
 
-const currentDomain = window.location.hostname;
-console.log("Current domain:", currentDomain);
-
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
@@ -27,113 +24,30 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-console.log("Initializing Firebase with config:", {
-  projectId: firebaseConfig.projectId,
-  authDomain: firebaseConfig.authDomain,
-  currentDomain
-});
 
-let app;
-try {
-  app = initializeApp(firebaseConfig);
-  console.log("Firebase initialized successfully");
-} catch (error) {
-  console.error("Firebase initialization error:", error);
-  throw error;
-}
-
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
 
-// Handle auth state persistence
-const isWebView = window.parent !== window;
-console.log('Environment check:', { 
-  isWebView, 
-  userAgent: window.navigator.userAgent,
-  parentLocation: isWebView ? 'Different from window' : 'Same as window'
-});
-
-// Only set persistence if not in webview
-if (!isWebView) {
-  setPersistence(auth, browserLocalPersistence)
-    .then(() => {
-      console.log("Firebase persistence set successfully");
-    })
-    .catch((error) => {
-      console.error('Firebase persistence error:', error.message, error.stack);
-    });
-}
-
-// Handle redirect result
-async function handleRedirectResult() {
-  console.log("Checking for redirect result...");
-  try {
-    const result = await getRedirectResult(auth);
-    if (result) {
-      console.log("Redirect sign-in successful:", {
-        uid: result.user.uid,
-        email: result.user.email,
-        displayName: result.user.displayName
-      });
-      return result.user;
-    }
-    console.log("No redirect result found");
-    return null;
-  } catch (error: any) {
-    console.error('Redirect sign-in error:', {
-      code: error.code,
-      message: error.message,
-      stack: error.stack,
-      domain: currentDomain
-    });
-    throw error;
-  }
-}
-
-// Check for redirect result on page load
-handleRedirectResult().catch(console.error);
-
-export async function signInWithGoogle(): Promise<User> {
-  console.log("Starting Google sign-in process...");
-
-  // Initialize Google Auth Provider
+export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   provider.addScope('email');
   provider.addScope('profile');
 
-  // Set login hint to force account picker
+  // Set custom parameters
   provider.setCustomParameters({
-    prompt: 'select_account',
-    login_hint: 'user@example.com'
+    prompt: 'select_account'
   });
 
-  try {
-    if (isWebView) {
-      // In webview, open auth in new window
-      const newTabUrl = `${window.location.origin}/auth`;
-      console.log("Opening auth in new tab:", newTabUrl);
-      window.open(newTabUrl, '_blank');
-      return {} as User;
-    } else {
-      // Normal redirect flow
-      console.log("Initiating Google sign-in redirect...");
-      await signInWithRedirect(auth, provider);
-      return {} as User; // This line won't execute due to redirect
-    }
-  } catch (error: any) {
-    console.error('Google sign in error:', {
-      code: error.code,
-      message: error.message,
-      stack: error.stack
-    });
-    throw error;
-  }
+  await signInWithRedirect(auth, provider);
 }
 
 export function signOut() {
-  console.log("Signing out user...");
   return auth.signOut();
 }
+
+export { getRedirectResult };
 
 // Set up auth state observer
 auth.onAuthStateChanged((user) => {

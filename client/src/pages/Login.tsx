@@ -3,11 +3,9 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { signInWithGoogle } from "@/lib/firebase";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { queryClient } from "@/lib/queryClient";
 
 export default function Login() {
   const [, navigate] = useLocation();
@@ -24,52 +22,27 @@ export default function Login() {
   }, [user, navigate]);
 
   async function handleLogin() {
+    if (loading) {
+      console.log("Login already in progress, skipping");
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
       console.log("Starting Google sign-in process...");
 
-      // Check if in webview
-      const isWebView = window.parent !== window;
-      if (isWebView) {
-        console.log("In webview, opening auth in new tab");
-        window.open(`${window.location.origin}/auth`, '_blank');
-        return;
-      }
+      await signInWithGoogle();
+      // The page will redirect to Google sign-in here
 
-      const user = await signInWithGoogle();
-      console.log("Google sign-in successful:", user);
-
-      // Only proceed with backend auth if we have a valid user
-      if (user?.uid) {
-        console.log("Verifying user with backend...");
-        const response = await apiRequest("POST", "/api/auth/login", {
-          firebaseUid: user.uid,
-          email: user.email,
-          username: user.displayName,
-        });
-
-        const userData = await response.json();
-        console.log("Backend authentication response:", userData);
-
-        if (!userData) {
-          throw new Error("Failed to authenticate with backend");
-        }
-
-        // Update auth state
-        queryClient.setQueryData(["/api/user"], userData);
-        console.log("Updated query cache with user data");
-        navigate("/dashboard");
-      }
     } catch (error: any) {
       console.error("Login failed:", error);
-      const errorMessage = error.message || "An error occurred during login";
-      setError(errorMessage);
+      setError(error.message || "An error occurred during login");
 
       if (error.code === "auth/popup-blocked") {
         toast({
           title: "Login Error",
-          description: "Please enable popups for this site to use Google sign-in. Look for the popup blocked icon in your browser's address bar.",
+          description: "Please enable popups for this site to use Google sign-in.",
           variant: "destructive",
         });
       } else if (error.code === "auth/unauthorized-domain") {
@@ -78,16 +51,10 @@ export default function Login() {
           description: `This domain (${window.location.hostname}) is not authorized for sign-in. Please add it to Firebase Console's Authorized Domains list.`,
           variant: "destructive",
         });
-      } else if (error.code === 'auth/invalid-action-code') {
-        toast({
-          title: "Login Error",
-          description: 'The sign-in link has expired or has already been used. Please try signing in again.',
-          variant: "destructive",
-        });
       } else {
         toast({
           title: "Login Failed",
-          description: errorMessage,
+          description: error.message,
           variant: "destructive",
         });
       }

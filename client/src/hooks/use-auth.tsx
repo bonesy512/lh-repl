@@ -4,135 +4,83 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { insertUserSchema, type User } from "@shared/schema";
+import { User } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { signInWithGoogle } from "@/lib/firebase";
+import { signInWithGoogle, auth, getRedirectResult } from "@/lib/firebase";
 
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<User, Error, void>;
+  loginMutation: UseMutationResult<void, Error, void>;
   logoutMutation: UseMutationResult<void, Error, void>;
   isWebView: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Helper to detect if we're in a webview
-const isWebView = () => {
-  const isEmbedded = window.parent !== window;
-  console.log("Webview detection:", { isEmbedded, userAgent: window.navigator.userAgent });
-  return isEmbedded;
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  const [isInWebView] = useState(isWebView());
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Log the environment on mount
+  // Handle Firebase redirect result on mount
   useEffect(() => {
-    console.log("Auth environment:", {
-      isWebView: isInWebView,
-      href: window.location.href,
-      origin: window.location.origin,
-      parent: window.parent !== window
-    });
-  }, [isInWebView]);
-
-  const {
-    data: user,
-    error,
-    isLoading,
-  } = useQuery<User | null>({
-    queryKey: ["/api/user"],
-    queryFn: async () => {
-      console.log("Fetching user data...");
+    const handleRedirect = async () => {
       try {
-        const response = await fetch("/api/user", {
-          credentials: "include",
-        });
-        if (response.status === 401) {
-          console.log("User not authenticated");
-          return null;
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          // Make backend auth call
+          const res = await apiRequest("POST", "/api/auth/login", {
+            uid: result.user.uid,
+            email: result.user.email,
+            displayName: result.user.displayName,
+          });
+
+          const userData = await res.json();
+          queryClient.setQueryData(["/api/user"], userData);
+
+          toast({
+            title: "Welcome!",
+            description: "Successfully logged in.",
+          });
         }
-        if (!response.ok) {
-          throw new Error(`Failed to fetch user: ${response.statusText}`);
-        }
-        const data = await response.json();
-        console.log("User data response:", data);
-        return data;
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        return null;
-      }
-    },
-    retry: false,
-  });
-
-  const loginMutation = useMutation({
-    mutationFn: async () => {
-      console.log("Login mutation started:", { isInWebView });
-
-      if (isInWebView) {
-        console.log("Detected webview, showing open in new tab message");
-        toast({
-          title: "Authentication Notice",
-          description: (
-            <div>
-              Please{" "}
-              <a
-                href={window.location.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline text-primary"
-              >
-                open in a new tab
-              </a>{" "}
-              to login.
-            </div>
-          ),
-        });
-        throw new Error("Please open in a new tab to login");
-      }
-
-      console.log("Proceeding with Google sign in");
-      try {
-        const googleUser = await signInWithGoogle();
-        console.log("Google sign in completed:", { uid: googleUser.uid });
-
-        const res = await apiRequest("POST", "/api/auth/login", {
-          uid: googleUser.uid,
-          email: googleUser.email,
-          displayName: googleUser.displayName,
-        });
-        return await res.json();
       } catch (error: any) {
-        console.error("Login error:", error);
-        throw error;
-      }
-    },
-    onSuccess: (user: User) => {
-      console.log("Login successful:", user);
-      queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Welcome!",
-        description: "You have been successfully logged in.",
-      });
-    },
-    onError: (error: Error) => {
-      console.error("Login mutation error:", error);
-      if (!error.message.includes("Please open in a new tab")) {
+        console.error("Auth redirect error:", error);
         toast({
           title: "Login failed",
           description: error.message,
           variant: "destructive",
         });
+      } finally {
+        setIsLoading(false);
       }
+    };
+
+    handleRedirect();
+  }, [toast]);
+
+  // Get user data
+  const { data: user, error } = useQuery<User | null>({
+    queryKey: ["/api/user"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+  });
+
+  // Login mutation
+  const loginMutation = useMutation({
+    mutationFn: async () => {
+      await signInWithGoogle();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
+  // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/auth/logout");
@@ -146,7 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
-      console.error("Logout mutation error:", error);
       toast({
         title: "Logout failed",
         description: error.message,
@@ -163,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: error || null,
         loginMutation,
         logoutMutation,
-        isWebView: isInWebView,
+        isWebView: window.parent !== window,
       }}
     >
       {children}
@@ -173,10 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-
   if (!context) {
     throw new Error("useAuth must be used within a AuthProvider");
   }
-
   return context;
 }
