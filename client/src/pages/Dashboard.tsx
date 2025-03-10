@@ -15,7 +15,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { type Parcel } from "@shared/schema";
-import { CreditCard, Activity, Loader2, Plus } from "lucide-react";
+import { CreditCard, Activity, Loader2, Plus, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -24,6 +24,42 @@ interface User {
   username: string;
   credits: number;
 }
+
+// Added TeamMembersCard component
+const TeamMembersCard = () => {
+  const [teamMembers, setTeamMembers] = useState<string[]>([]); // Placeholder data
+
+  useEffect(() => {
+    // Fetch team members data from API here.  This is a placeholder.
+    const fetchTeamMembers = async () => {
+      try {
+        const response = await fetch('/api/team'); // Replace with your actual API endpoint
+        const data = await response.json();
+        setTeamMembers(data.members);
+      } catch (error) {
+        console.error("Error fetching team members:", error);
+      }
+    };
+    fetchTeamMembers();
+  }, []);
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Team Members</CardTitle>
+        <Users className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <ul>
+          {teamMembers.map((member) => (
+            <li key={member}>{member}</li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+};
+
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -109,6 +145,8 @@ export default function Dashboard() {
               </Button>
             </CardContent>
           </Card>
+
+          <TeamMembersCard />
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

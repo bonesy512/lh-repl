@@ -15,6 +15,8 @@ import Login from "@/pages/Login";
 import BetaLanding from "@/pages/BetaLanding";
 import NotFound from "@/pages/not-found";
 import PurchaseTokens from "@/pages/PurchaseTokens";
+import TeamManagement from "@/pages/TeamManagement"; // Added import for TeamManagement
+
 
 function Router() {
   return (
@@ -30,6 +32,7 @@ function Router() {
           <Route path="/team" component={TeamMembers} />
           <Route path="/beta" component={BetaLanding} />
           <Route path="/purchase-tokens" component={PurchaseTokens} />
+          <Route path="/team-management" component={TeamManagement} /> {/* Added route for TeamManagement */}
           <Route component={NotFound} />
         </Switch>
       </main>
