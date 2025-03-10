@@ -15,35 +15,14 @@ import { useAuth } from "@/hooks/use-auth";
 
 export function Navigation() {
   const [location, navigate] = useLocation();
-  const { user, isLoading, isWebView } = useAuth();
-
-  console.log("Navigation render state:", { 
-    user, 
-    isLoading, 
-    location, 
-    isWebView,
-    currentUrl: window.location.href 
-  });
+  const { user, isLoading } = useAuth();
 
   const handleSignOut = async () => {
     try {
-      console.log("Initiating sign out...");
       await signOut();
       navigate("/auth");
     } catch (error) {
       console.error("Sign out error:", error);
-    }
-  };
-
-  const handleAuthClick = () => {
-    console.log("Auth button clicked:", { isWebView });
-    if (isWebView) {
-      const newTabUrl = window.location.origin + "/auth";
-      console.log("Opening auth in new tab:", newTabUrl);
-      window.open(newTabUrl, "_blank");
-    } else {
-      console.log("Navigating to auth page");
-      navigate("/auth");
     }
   };
 
@@ -134,7 +113,7 @@ export function Navigation() {
             <Button 
               variant="ghost" 
               className="relative h-8 w-8 rounded-full"
-              onClick={handleAuthClick}
+              onClick={() => navigate("/auth")}
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback>?</AvatarFallback>
