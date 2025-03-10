@@ -27,6 +27,7 @@ try {
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: privateKey,
     }),
+    storageBucket: "landhacker-9a7c1.appspot.com" // Add bucket configuration
   });
   console.log('Firebase Admin initialized successfully');
 } catch (error) {
