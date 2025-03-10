@@ -9,7 +9,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Settings, Users, LogOut, Users2 } from "lucide-react";
+import { 
+  Settings, 
+  LogOut, 
+  LayoutDashboard, 
+  Map, 
+  Users2, 
+  CreditCard,
+  Wallet
+} from "lucide-react";
 import { signOut } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -17,7 +25,7 @@ export function Navigation() {
   const [location, navigate] = useLocation();
   const { user, isLoading } = useAuth();
 
-  // Add debug logs
+  // Debug log for auth state
   console.log("Navigation render - Auth state:", { user, isLoading, currentLocation: location });
 
   const handleSignOut = async () => {
@@ -92,8 +100,15 @@ export function Navigation() {
                     console.log("Navigating to dashboard");
                     navigate("/dashboard");
                   }}>
-                    <Users className="mr-2 h-4 w-4" />
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
                     <span>Dashboard</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    console.log("Navigating to app");
+                    navigate("/app");
+                  }}>
+                    <Map className="mr-2 h-4 w-4" />
+                    <span>App</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
                     console.log("Navigating to team management");
@@ -101,6 +116,21 @@ export function Navigation() {
                   }}>
                     <Users2 className="mr-2 h-4 w-4" />
                     <span>Team Management</span>
+                    <span className="ml-auto text-xs text-muted-foreground">$10/seat</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    console.log("Navigating to purchase tokens");
+                    navigate("/purchase-tokens");
+                  }}>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    <span>Purchase Tokens</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    console.log("Navigating to membership");
+                    navigate("/membership");
+                  }}>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    <span>Membership</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
                     console.log("Navigating to settings");

@@ -10,13 +10,14 @@ import Home from "@/pages/Home";
 import Features from "@/pages/Features";
 import Pricing from "@/pages/Pricing";
 import Dashboard from "@/pages/Dashboard";
-import TeamMembers from "@/pages/TeamMembers";
+import App from "@/pages/App";
+import TeamManagement from "@/pages/TeamManagement";
 import Login from "@/pages/Login";
 import BetaLanding from "@/pages/BetaLanding";
 import NotFound from "@/pages/not-found";
 import PurchaseTokens from "@/pages/PurchaseTokens";
-import TeamManagement from "@/pages/TeamManagement";
-import Settings from './pages/Settings';
+import Membership from "@/pages/Membership";
+import Settings from "@/pages/Settings";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function Router() {
@@ -31,9 +32,10 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/beta" component={BetaLanding} />
           <ProtectedRoute path="/dashboard" component={Dashboard} />
-          <ProtectedRoute path="/team" component={TeamMembers} />
+          <ProtectedRoute path="/app" component={App} />
           <ProtectedRoute path="/team-management" component={TeamManagement} />
           <ProtectedRoute path="/purchase-tokens" component={PurchaseTokens} />
+          <ProtectedRoute path="/membership" component={Membership} />
           <ProtectedRoute path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
