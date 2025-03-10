@@ -32,7 +32,8 @@ export function Navigation() {
     .join("")
     .toUpperCase() || "?";
 
-  console.log("Rendering Navigation with user:", user); // Debug log
+  // Add debug logs
+  console.log("Navigation render - Auth state:", { user, isLoading });
 
   return (
     <header className="border-b">
