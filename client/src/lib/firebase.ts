@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider, User, browserLocalPersistence, setPersistence } from "firebase/auth";
+import { getAuth, signInWithRedirect, GoogleAuthProvider, User, browserLocalPersistence, setPersistence, getRedirectResult } from "firebase/auth";
 import { getDatabase, ref, get, set } from "firebase/database";
 
 // Verify Firebase configuration
@@ -50,38 +50,47 @@ console.log('Setting Firebase persistence to LOCAL...');
 try {
   setPersistence(auth, browserLocalPersistence)
     .then(() => {
-      console.log("Firebase Admin initialized successfully");
+      console.log("Firebase persistence set successfully");
+      // Check for redirect result on page load
+      return handleRedirectResult();
     })
     .catch((error) => {
-      console.error('Firebase token verification failed:', error.message, error.stack);
+      console.error('Firebase persistence error:', error.message, error.stack);
     });
 } catch (error) {
   console.error('Failed to set persistence:', error);
 }
 
-// Check if popups are allowed
-async function checkPopupsAllowed(): Promise<boolean> {
+// Handle redirect result
+async function handleRedirectResult() {
   try {
-    const popup = window.open('', '_blank', 'width=1,height=1');
-    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-      return false;
+    const result = await getRedirectResult(auth);
+    if (result) {
+      console.log("Redirect sign-in successful:", {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName
+      });
+      return result.user;
     }
-    popup.close();
-    return true;
-  } catch (e) {
-    return false;
+  } catch (error: any) {
+    console.error('Redirect sign-in error:', error.message, error.stack);
+    handleAuthError(error);
+  }
+}
+
+function handleAuthError(error: any) {
+  if (error.code === 'auth/unauthorized-domain') {
+    throw new Error(`This domain (${currentDomain}) is not authorized for sign-in. Please add it to Firebase Console's Authorized Domains list.`);
+  } else if (error.code === 'auth/invalid-action-code') {
+    throw new Error('The sign-in link has expired or has already been used. Please try signing in again.');
+  } else {
+    throw error;
   }
 }
 
 export async function signInWithGoogle(): Promise<User> {
   console.log("Starting Google sign-in process...");
-
-  // Check if popups are allowed first
-  const popupsAllowed = await checkPopupsAllowed();
-  if (!popupsAllowed) {
-    console.error("Popups are blocked");
-    throw new Error("Please enable popups for this site and try again. You can usually do this by clicking the popup blocked icon in your browser's address bar.");
-  }
 
   // Initialize Google Auth Provider with custom parameters
   const provider = new GoogleAuthProvider();
@@ -94,36 +103,13 @@ export async function signInWithGoogle(): Promise<User> {
   });
 
   try {
-    console.log("Attempting Google sign-in popup...");
-    const result = await signInWithPopup(auth, provider);
-    console.log("Google sign in successful:", {
-      uid: result.user.uid,
-      email: result.user.email,
-      displayName: result.user.displayName
-    });
-
-    if (typeof window !== 'undefined') {
-      // Close any existing popups
-      const popups = window.open('', '_self');
-      if (popups) {
-        popups.close();
-      }
-    }
-
-    return result.user;
+    console.log("Initiating Google sign-in redirect...");
+    await signInWithRedirect(auth, provider);
+    // The page will redirect to Google at this point
+    return {} as User; // This line won't actually execute due to the redirect
   } catch (error: any) {
     console.error('Google sign in error:', error.message, error.stack);
-    const errorMessage = error.message || "An error occurred";
-
-    if (error.code === 'auth/popup-blocked') {
-      throw new Error('Please enable popups for this site to use Google sign-in');
-    } else if (error.code === 'auth/cancelled-popup-request') {
-      throw new Error('Sign-in cancelled. Please try again.');
-    } else if (error.code === 'auth/unauthorized-domain') {
-      throw new Error(`This domain (${currentDomain}) is not authorized for sign-in. Please add it to Firebase Console's Authorized Domains list.`);
-    } else if (error.code === 'auth/invalid-action-code') {
-      throw new Error('The sign-in link has expired or has already been used. Please try signing in again.');
-    }
+    handleAuthError(error);
     throw error;
   }
 }
