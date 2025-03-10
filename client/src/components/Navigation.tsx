@@ -17,6 +17,9 @@ export function Navigation() {
   const [location, navigate] = useLocation();
   const { user, isLoading } = useAuth();
 
+  // Add debug logs
+  console.log("Navigation render - Auth state:", { user, isLoading });
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -31,9 +34,6 @@ export function Navigation() {
     .map((n) => n[0])
     .join("")
     .toUpperCase() || "?";
-
-  // Add debug logs
-  console.log("Navigation render - Auth state:", { user, isLoading });
 
   return (
     <header className="border-b">
