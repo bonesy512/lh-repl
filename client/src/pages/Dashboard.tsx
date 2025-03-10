@@ -57,15 +57,16 @@ export default function Dashboard() {
   const { data: parcels = [], isLoading: loadingParcels } = useQuery<Parcel[]>({
     queryKey: ["/api/parcels"],
     enabled: !!authUser,
-    initialData: [], // Initialize with empty array
+    onSuccess: (data) => {
+      console.log("Fetched parcels:", data); // Debug log
+    },
   });
 
   const { data: invoices = [], isLoading: loadingInvoices } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
     enabled: !!authUser,
-    initialData: [], // Initialize with empty array
+    initialData: [], 
   });
-
 
   // Show loading state for the entire dashboard
   if (authLoading || loadingUser || loadingParcels) {
@@ -80,11 +81,6 @@ export default function Dashboard() {
   if (!authUser) {
     return null; // Will be redirected by useEffect
   }
-
-  if (loadingInvoices) {
-    return <div>Loading invoices...</div>; //add loading state
-  }
-
 
   return (
     <div className="min-h-screen bg-background">
@@ -108,41 +104,13 @@ export default function Dashboard() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Team Members</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">1</div>
-              <p className="text-xs text-muted-foreground">
-                Add members for $10/month each
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Properties Analyzed
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Properties Analyzed</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{parcels.length}</div>
               <p className="text-xs text-muted-foreground">
                 Total properties analyzed
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Subscription</CardTitle>
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">Professional</div>
-              <p className="text-xs text-muted-foreground">
-                $20/month • Renews Mar 28
               </p>
             </CardContent>
           </Card>
@@ -155,11 +123,11 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="map" className="space-y-8">
-            {/* Map Component with loading state */}
+            {/* Map Component */}
             <PropertyMap
               parcels={parcels}
               onParcelSelect={setSelectedParcel}
-              loading={false}
+              loading={loadingParcels}
             />
 
             {/* Property Card */}
@@ -256,7 +224,7 @@ export default function Dashboard() {
                           size="sm"
                           onClick={() => {
                             setSelectedParcel(parcel);
-                            handleAnalyze();
+                            //handleAnalyze(); //removed as it's not defined in the provided code.
                           }}
                         >
                           View Analysis

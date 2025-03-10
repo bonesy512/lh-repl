@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl';
-import ReactMapGL, { NavigationControl, GeolocateControl, Marker, Source, Layer, Popup } from 'react-map-gl';
+import ReactMapGL, { NavigationControl, GeolocateControl, Marker, Popup } from 'react-map-gl';
 import { SearchBar } from "./SearchBar";
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -20,6 +20,8 @@ export default function PropertyMap({
   loading = false,
   onViewMore
 }: PropertyMapProps) {
+  console.log("PropertyMap received parcels:", parcels); // Debug log
+
   // Center on Texas by default
   const [viewport, setViewport] = useState({
     latitude: 31.9686,
@@ -95,43 +97,54 @@ export default function PropertyMap({
         />
 
         {/* Property Markers */}
-        {parcels.map((parcel) => (
-          <Marker
-            key={parcel.id}
-            latitude={Number(parcel.latitude)}
-            longitude={Number(parcel.longitude)}
-            onClick={e => {
-              e.originalEvent.stopPropagation();
-              setSelectedParcel(parcel);
-              setSelectedProperty({
-                propertyId: parcel.id,
-                address: parcel.address,
-                latitude: Number(parcel.latitude),
-                longitude: Number(parcel.longitude)
-              });
-              setPropertyCardVisible(true);
-              if (onParcelSelect) {
-                onParcelSelect(parcel);
-              }
-            }}
-          >
-            <div className="text-primary cursor-pointer">
-              <svg
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-            </div>
-          </Marker>
-        ))}
+        {parcels.map((parcel) => {
+          const lat = Number(parcel.latitude);
+          const lng = Number(parcel.longitude);
+          console.log(`Rendering marker for parcel ${parcel.id} at ${lat}, ${lng}`); // Debug log
+
+          if (isNaN(lat) || isNaN(lng)) {
+            console.warn(`Invalid coordinates for parcel ${parcel.id}`);
+            return null;
+          }
+
+          return (
+            <Marker
+              key={parcel.id}
+              latitude={lat}
+              longitude={lng}
+              onClick={e => {
+                e.originalEvent.stopPropagation();
+                setSelectedParcel(parcel);
+                setSelectedProperty({
+                  propertyId: parcel.id,
+                  address: parcel.address,
+                  latitude: lat,
+                  longitude: lng
+                });
+                setPropertyCardVisible(true);
+                if (onParcelSelect) {
+                  onParcelSelect(parcel);
+                }
+              }}
+            >
+              <div className="text-primary cursor-pointer">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="24"
+                  height="24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+              </div>
+            </Marker>
+          );
+        })}
 
         {/* Selected Property Popup */}
         {selectedParcel && (
@@ -142,7 +155,11 @@ export default function PropertyMap({
             closeButton={true}
           >
             <div className="p-2">
-              <h3 className="font-semibold">{selectedParcel.address}</h3>
+              <h3 className="font-semibold">{
+                typeof selectedParcel.address === 'string' 
+                  ? JSON.parse(selectedParcel.address).street 
+                  : selectedParcel.address.street
+              }</h3>
               <p className="text-sm text-muted-foreground">
                 {selectedParcel.acres} acres
               </p>
