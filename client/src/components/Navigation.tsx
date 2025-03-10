@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Settings, Users, LogOut } from "lucide-react";
+import { Settings, Users, LogOut, Users2 } from "lucide-react";
 import { signOut } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -88,6 +88,13 @@ export function Navigation() {
                   <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                     <Users className="mr-2 h-4 w-4" />
                     <span>Dashboard</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/team-management")}>
+                    <Users2 className="mr-2 h-4 w-4" />
+                    <span>Team Management</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      $10/seat
+                    </span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
