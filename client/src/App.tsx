@@ -23,7 +23,6 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 function Router() {
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Empty header - no navigation */}
       <main className="flex-1">
         <Switch>
           <Route path="/" component={Home} />
