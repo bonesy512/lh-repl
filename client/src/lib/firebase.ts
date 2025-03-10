@@ -25,9 +25,25 @@ const firebaseConfig = {
 
 // Initialize Firebase with multiple persistence methods to handle storage partitioning
 const app = initializeApp(firebaseConfig);
-export const auth = initializeAuth(app, {
-  persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence]
+console.log('Current domain:', window.location.hostname);
+console.log('Initializing Firebase with config:', {
+  projectId: firebaseConfig.projectId,
+  authDomain: firebaseConfig.authDomain,
+  currentDomain: window.location.hostname
 });
+
+try {
+  export const auth = initializeAuth(app, {
+    persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence]
+  });
+  console.log('Firebase initialized successfully');
+  console.log('Setting Firebase persistence to LOCAL...');
+} catch (error) {
+  console.error('Firebase initialization failed:', error);
+  // Fallback to basic auth without persistence if storage access fails
+  export const auth = getAuth(app);
+}
+
 export const db = getDatabase(app);
 
 export async function signInWithGoogle(): Promise<User | null> {
@@ -40,6 +56,18 @@ export async function signInWithGoogle(): Promise<User | null> {
     prompt: 'select_account',
     // Add Replit domain to allowed domains
     hosted_domain: window.location.hostname
+  });
+
+  console.log('Webview detection:', {
+    isEmbedded: window.parent !== window,
+    userAgent: navigator.userAgent
+  });
+
+  console.log('Auth environment:', {
+    isWebView: window.parent !== window,
+    href: window.location.href,
+    origin: window.location.origin,
+    parent: window.parent === window
   });
 
   try {
