@@ -1,29 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, MinusCircle, Loader2, Mail, Users, Users2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/use-auth";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,10 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
 import { PlusCircle, Mail, Users, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface TeamMember {
   id: number;
@@ -48,9 +25,17 @@ interface TeamMember {
 
 export default function TeamManagement() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const [inviteEmail, setInviteEmail] = useState("");
+
+  // Redirect to login if not authenticated
+  if (!authLoading && !user) {
+    console.log("No authenticated user, redirecting to login");
+    navigate("/login");
+    return null;
+  }
 
   const { data: teamData, isLoading } = useQuery({
     queryKey: ["/api/team"],
@@ -62,8 +47,7 @@ export default function TeamManagement() {
       const response = await fetch("/api/team/seats", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${await user?.getIdToken()}`
+          "Content-Type": "application/json"
         }
       });
 
@@ -109,7 +93,7 @@ export default function TeamManagement() {
     setInviteEmail("");
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -117,7 +101,7 @@ export default function TeamManagement() {
     );
   }
 
-  const availableSeats = 3 - (teamData?.members?.length || 1);
+  const availableSeats = teamData ? 3 - (teamData.members?.length || 1) : 0;
   const teamMembers = teamData?.members || [];
 
   return (
