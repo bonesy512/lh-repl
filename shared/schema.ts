@@ -48,10 +48,10 @@ export const parcels = pgTable("parcels", {
   acres: numeric("acres").notNull(),
   price: integer("price"),
   details: jsonb("details"),
-  // Add geometry column for PostGIS
-  geometry: sql`geometry(Polygon, 4326)`.notNull(),
-  // Add point location for quick lookups
-  location: sql`geometry(Point, 4326)`.notNull(),
+  // Add geometry column for PostGIS - using raw SQL without notNull
+  geometry: sql`geometry(Polygon, 4326)`,
+  // Add point location for quick lookups - using raw SQL without notNull
+  location: sql`geometry(Point, 4326)`,
 });
 
 // Add spatial index
