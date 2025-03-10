@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithRedirect, GoogleAuthProvider, User, getRedirectResult } from "firebase/auth";
-import { getDatabase, ref, get, set, query, orderByChild, equalTo } from "firebase/database";
+import { getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup, signOut as firebaseSignOut, getRedirectResult } from "firebase/auth";
+import { getDatabase, ref, set, get } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -35,10 +35,17 @@ export async function getPropertyQuery(userId: string, propertyId: string) {
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   try {
-    await signInWithRedirect(auth, provider);
+    // Attempt signInWithPopup first
+    await signInWithPopup(auth, provider);
   } catch (error: any) {
-    console.error("Google sign in error:", error);
-    throw error;
+    console.error("signInWithPopup failed:", error);
+    // Fallback to signInWithRedirect if popup fails (e.g., in certain environments)
+    try {
+      await signInWithRedirect(auth, provider);
+    } catch (redirectError: any) {
+      console.error("signInWithRedirect failed:", redirectError);
+      throw redirectError;
+    }
   }
 }
 

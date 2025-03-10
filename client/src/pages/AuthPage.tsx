@@ -35,7 +35,10 @@ export default function AuthPage() {
         <Button
           className="w-full"
           size="lg"
-          onClick={() => loginMutation.mutate()}
+          onClick={() => {
+            console.log("Attempting login with popup");
+            loginMutation.mutate();
+          }}
           disabled={loginMutation.isPending}
         >
           {loginMutation.isPending ? (
@@ -47,6 +50,9 @@ export default function AuthPage() {
             "Sign in with Google"
           )}
         </Button>
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          If a popup doesn't appear, please check your popup blocker settings.
+        </p>
       </div>
     </div>
   );
