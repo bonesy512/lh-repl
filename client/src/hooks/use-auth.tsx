@@ -6,7 +6,7 @@ import {
 import { User } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { signInWithGoogle, signOut, auth, getRedirectResult, onAuthChange } from "@/lib/firebase";
+import { signInWithGoogle, signOut, auth, getRedirectResult } from "@/lib/firebase";
 
 type AuthContextType = {
   user: User | null;
@@ -22,57 +22,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
 
-  // Handle auth state changes and redirect results
+  // Handle auth state changes
   useEffect(() => {
     let mounted = true;
 
-    // Check for redirect result and handle initial auth state
-    const handleAuth = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (!mounted) return;
-
-        if (result?.user) {
-          try {
-            const res = await apiRequest("POST", "/api/auth/login", {
-              uid: result.user.uid,
-              email: result.user.email,
-              displayName: result.user.displayName,
-            });
-
-            if (!mounted) return;
-
-            const userData = await res.json();
-            queryClient.setQueryData(["/api/user"], userData);
-
-            toast({
-              title: "Welcome!",
-              description: "Successfully logged in.",
-            });
-          } catch (error) {
-            console.error("Backend sync failed:", error);
-            toast({
-              title: "Error",
-              description: "Failed to complete sign-in process.",
-              variant: "destructive",
-            });
-          }
-        }
-      } catch (error: any) {
-        console.error("Auth initialization error:", error);
-        toast({
-          title: "Login Error",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    };
-
     // Set up auth state observer
-    const unsubscribe = onAuthChange(async (firebaseUser) => {
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (!mounted) return;
 
-      if (firebaseUser && !isLoading) {
+      if (firebaseUser) {
         try {
           const res = await apiRequest("POST", "/api/auth/login", {
             uid: firebaseUser.uid,
@@ -90,13 +48,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     });
 
-    handleAuth();
-
     return () => {
       mounted = false;
       unsubscribe();
     };
-  }, [toast, isLoading]);
+  }, [toast]);
 
   // Get user data
   const { data: user, error } = useQuery<User | null>({
