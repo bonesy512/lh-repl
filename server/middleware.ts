@@ -142,10 +142,35 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
 export const cspMiddleware = expressCspHeader({
   directives: {
     'default-src': ["'self'"],
-    'script-src': ["'self'", "'unsafe-inline'", "https://apis.google.com"],
+    'script-src': [
+      "'self'", 
+      "'unsafe-inline'",
+      "https://apis.google.com",
+      "https://*.stripe.com",
+      "https://*.firebaseapp.com",
+      "https://firebaseinstallations.googleapis.com"
+    ],
     'style-src': ["'self'", "'unsafe-inline'"],
-    'img-src': ["'self'", "data:", "https://*.googleusercontent.com"],
-    'connect-src': ["'self'", "https://*.googleapis.com", "https://firebaseinstallations.googleapis.com"],
-    'frame-src': ["'self'", "https://accounts.google.com"],
+    'img-src': [
+      "'self'", 
+      "data:", 
+      "https://*.googleusercontent.com",
+      "https://*.stripe.com"
+    ],
+    'connect-src': [
+      "'self'", 
+      "https://*.googleapis.com",
+      "https://firebaseinstallations.googleapis.com",
+      "https://*.stripe.com",
+      "https://*.firebaseio.com"
+    ],
+    'frame-src': [
+      "'self'", 
+      "https://accounts.google.com",
+      "https://*.firebaseapp.com",
+      "https://*.stripe.com"
+    ],
+    'frame-ancestors': ["'self'"],
+    'form-action': ["'self'"]
   }
 });

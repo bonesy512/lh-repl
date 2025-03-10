@@ -37,14 +37,16 @@ export async function signInWithGoogle(): Promise<User | null> {
 
   // Set custom parameters for better browser compatibility
   provider.setCustomParameters({
-    prompt: 'select_account'
+    prompt: 'select_account',
+    // Add Replit domain to allowed domains
+    hosted_domain: window.location.hostname
   });
 
   try {
     console.log("Attempting popup sign-in...");
     const result = await signInWithPopup(auth, provider);
 
-    // Get ID token for additional verification if needed
+    // Get ID token for additional verification
     const credential = GoogleAuthProvider.credentialFromResult(result);
     const idToken = credential?.idToken;
 
