@@ -81,7 +81,9 @@ async function handleRedirectResult() {
 
 function handleAuthError(error: any) {
   if (error.code === 'auth/unauthorized-domain') {
-    throw new Error(`This domain (${currentDomain}) is not authorized for sign-in. Please add it to Firebase Console's Authorized Domains list.`);
+    const errorMessage = `The domain "${currentDomain}" is not authorized for Firebase Authentication. Please add it to the authorized domains list in your Firebase Console:\n1. Go to Firebase Console\n2. Select your project\n3. Go to Authentication > Settings > Authorized domains\n4. Click "Add domain"\n5. Add "${currentDomain}"`;
+    console.error(errorMessage);
+    throw new Error(errorMessage);
   } else if (error.code === 'auth/invalid-action-code') {
     throw new Error('The sign-in link has expired or has already been used. Please try signing in again.');
   } else {
