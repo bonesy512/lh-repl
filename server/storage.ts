@@ -35,20 +35,7 @@ export interface IStorage {
     maxAcres: number;
     zipCode: string;
   }): Promise<any[]>;
-  importGISDataFromURL(dataType: 'parcel' | 'address', url: string, region: string, processType: 'full' | 'core' | 'premium'?: 'full'):Promise<void>;
-  createDataImport(data: any): Promise<any>;
-  createPremiumDataJob(jobData: {
-    userId: number;
-    parcelId: number;
-    requestType: string;
-    status: string;
-    createdAt: Date;
-  }): Promise<number>;
-  processPremiumDataJob(jobId: number): Promise<void>;
-  getJobStatus(jobId: number): Promise<any>;
-  processCoreGISData(filePath: string, dataType: string, region: string): Promise<number>;
-  processPremiumGISData(filePath: string, dataType: string, region: string): Promise<number>;
-  processFullGISData(filePath: string, dataType: string, region: string): Promise<number>;
+  importGISDataFromURL(dataType: 'parcel' | 'address', url: string, region: string):Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -307,19 +294,16 @@ export class DatabaseStorage implements IStorage {
     return results;
   }
 
-  async importGISDataFromURL(dataType: 'parcel' | 'address', url: string, region: string, processType: 'full' | 'core' | 'premium' = 'full'): Promise<void> {
-    let importRecord;
+  async importGISDataFromURL(dataType: 'parcel' | 'address', url: string, region: string): Promise<void> {
     try {
       // Create import record
-      const [newImportRecord] = await db.insert(dataImports).values({
+      const [importRecord] = await db.insert(dataImports).values({
         sourceType: dataType,
         region: region,
         status: 'pending',
         recordCount: 0,
-        metadata: { url, processType }
+        metadata: { url }
       }).returning();
-
-      importRecord = newImportRecord;
 
       // Update status to processing
       await db
@@ -346,49 +330,14 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Log the start of processing
-      console.log(`Started import for ${dataType} data from ${filePath} for region ${region} as ${processType} data`);
+      console.log(`Started import for ${dataType} data from ${filePath} for region ${region}`);
       console.log('File exists in Firebase Storage, ready for processing');
 
-      // Download the file to a temporary location for processing
-      const tempFilePath = `/tmp/${Date.now()}_${filePath.split('/').pop()}`;
-      await fileRef.download({ destination: tempFilePath });
-
-      // Process based on type
-      let recordCount = 0;
-
-      if (processType === 'core') {
-        // Process only core data (basic parcel boundaries and attributes)
-        recordCount = await this.processCoreGISData(tempFilePath, dataType, region);
-      } else if (processType === 'premium') {
-        // Process premium data (detailed ownership, valuation)
-        recordCount = await this.processPremiumGISData(tempFilePath, dataType, region);
-      } else {
-        // Process full dataset
-        recordCount = await this.processFullGISData(tempFilePath, dataType, region);
-      }
-
-      // Update import record with success
-      await db
-        .update(dataImports)
-        .set({ 
-          status: 'completed',
-          recordCount,
-          metadata: { 
-            ...importRecord.metadata, 
-            completedAt: new Date().toISOString(),
-            processedRecords: recordCount
-          }
-        })
-        .where(eq(dataImports.id, importRecord.id));
-
-      // Clean up temporary file
-      const fs = require('fs');
-      if (fs.existsSync(tempFilePath)) {
-        fs.unlinkSync(tempFilePath);
-      }
+      // Processing will be handled by a separate worker process
+      // This is just the setup for now
 
     } catch (error) {
-      console.error('Error during GIS import:', error);
+      console.error('Error starting import:', error);
 
       // Update import record with error status
       if (importRecord) {
@@ -396,85 +345,13 @@ export class DatabaseStorage implements IStorage {
           .update(dataImports)
           .set({ 
             status: 'failed',
-            errorDetails: error.message,
-            metadata: { 
-              ...importRecord.metadata, 
-              error: error.message,
-              errorTime: new Date().toISOString()
-            }
+            errorDetails: error.message 
           })
           .where(eq(dataImports.id, importRecord.id));
       }
 
       throw error;
     }
-  }
-
-  // Placeholder methods for GIS processing
-  // In a real implementation, these would use appropriate GIS libraries
-  async processCoreGISData(filePath: string, dataType: string, region: string): Promise<number> {
-    console.log(`Processing core GIS data from ${filePath}`);
-    // This would typically parse the GIS file format and extract basic data
-    // For demo purposes, we'll just return a count
-    return 100;
-  }
-
-  async processPremiumGISData(filePath: string, dataType: string, region: string): Promise<number> {
-    console.log(`Processing premium GIS data from ${filePath}`);
-    // This would extract detailed property information
-    return 50;
-  }
-
-  async processFullGISData(filePath: string, dataType: string, region: string): Promise<number> {
-    console.log(`Processing full GIS dataset from ${filePath}`);
-    // Process both core and premium data
-    const coreCount = await this.processCoreGISData(filePath, dataType, region);
-    const premiumCount = await this.processPremiumGISData(filePath, dataType, region);
-    return coreCount + premiumCount;
-  }
-
-  // Data import record management
-  async createDataImport(data: any): Promise<any> {
-    const [importRecord] = await db.insert(dataImports).values(data).returning();
-    return importRecord;
-  }
-
-  // Premium data job management
-  async createPremiumDataJob(jobData: {
-    userId: number;
-    parcelId: number;
-    requestType: string;
-    status: string;
-    createdAt: Date;
-  }): Promise<number> {
-    // In a real implementation, this would create a record in a jobs table
-    // For demo purposes, we'll just log it and return a mock job ID
-    console.log('Creating premium data job:', jobData);
-    return Math.floor(Math.random() * 10000);
-  }
-
-  async processPremiumDataJob(jobId: number): Promise<void> {
-    console.log(`Processing premium data job ${jobId}`);
-    // In a real implementation, this would retrieve the GIS data
-    // and process it based on subscription level
-  }
-
-  async getJobStatus(jobId: number): Promise<any> {
-    // In a real implementation, this would query a jobs table
-    // For demo purposes, return mock data
-    return {
-      id: jobId,
-      status: 'completed',
-      data: {
-        ownerName: 'Demo Owner',
-        assessedValue: 250000,
-        history: [
-          { year: 2020, value: 220000 },
-          { year: 2021, value: 235000 },
-          { year: 2022, value: 250000 }
-        ]
-      }
-    };
   }
 }
 

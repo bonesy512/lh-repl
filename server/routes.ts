@@ -276,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update the import route to handle directory paths
   app.post("/api/import-gis-data", verifyFirebaseToken, async (req, res) => {
     try {
-      const { dataType, url, region, processType } = z.object({
+      const { dataType, url, region } = z.object({
         dataType: z.enum(["parcel", "address"]),
         url: z.string()
           .url()
@@ -285,7 +285,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             'Only Firebase Storage URLs are supported'
           ),
         region: z.string(),
-        processType: z.enum(["full", "core", "premium"]).default("full")
       }).parse(req.body);
 
       // Get user to associate with import
@@ -299,31 +298,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized to import data" });
       }
 
-      // Create an import job record
-      const importJob = await storage.createDataImport({
-        sourceType: dataType,
-        region: region,
-        status: 'processing',
-        recordCount: 0,
-        metadata: { 
-          url,
-          processType,
-          startedBy: user.id,
-          startTime: new Date().toISOString()
-        }
-      });
-
-      // Process based on the requested type
-      await storage.importGISDataFromURL(dataType, url, region, processType);
-      
+      await storage.importGISDataFromURL(dataType, url, region);
       res.json({ 
         message: "Import started successfully",
-        jobId: importJob.id,
         note: "Upload your GIS files to Firebase Storage and use the download URL in this endpoint",
-        processNotes: `Processing as ${processType} dataset: ` + 
-          (processType === "core" ? "Only basic data will be processed for all users" : 
-           processType === "premium" ? "Premium data will be processed for subscribers" : 
-           "Complete dataset will be processed"),
         example: {
           downloadUrl: "https://firebasestorage.googleapis.com/v0/b/landhacker-9a7c1.appspot.com/o/Texas%2FAddresses%2Fyour-file.gdbtable",
           usage: "Get the download URL for each .gdbtable file from Firebase Console"
@@ -332,77 +310,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error starting GIS data import:', error);
       res.status(400).json({ message: error.message });
-    }
-  });
-  
-  // Add endpoint for premium data access
-  app.post("/api/premium-gis-data", verifyFirebaseToken, async (req, res) => {
-    try {
-      const { parcelId, dataType } = z.object({
-        parcelId: z.number(),
-        dataType: z.enum(["ownership", "valuation", "history"])
-      }).parse(req.body);
-
-      // Get user to check subscription
-      const user = await storage.getUserByFirebaseId(req.user.uid);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Check subscription for premium access
-      if (user.subscriptionTier === "free") {
-        return res.status(403).json({ 
-          message: "Premium subscription required",
-          requiredTier: "basic" 
-        });
-      }
-
-      // Create a processing job
-      const jobId = await storage.createPremiumDataJob({
-        userId: user.id,
-        parcelId,
-        requestType: dataType,
-        status: "queued",
-        createdAt: new Date()
-      });
-
-      // For demo, immediately process the job
-      // In production, this would be handled by a worker
-      setTimeout(() => {
-        storage.processPremiumDataJob(jobId);
-      }, 100);
-
-      res.json({
-        message: "Premium data request queued",
-        jobId,
-        status: "queued"
-      });
-    } catch (error: any) {
-      console.error('Error requesting premium data:', error);
-      res.status(400).json({ message: error.message });
-    }
-  });
-
-  // Add endpoint to check job status
-  app.get("/api/job-status/:jobId", verifyFirebaseToken, async (req, res) => {
-    try {
-      const jobId = parseInt(req.params.jobId);
-      const job = await storage.getJobStatus(jobId);
-      
-      if (!job) {
-        return res.status(404).json({ message: "Job not found" });
-      }
-
-      // Check if user has access to this job
-      const user = await storage.getUserByFirebaseId(req.user.uid);
-      if (!user || (job.userId !== user.id && user.subscriptionTier !== "enterprise")) {
-        return res.status(403).json({ message: "Unauthorized access to job" });
-      }
-
-      res.json(job);
-    } catch (error: any) {
-      console.error('Error checking job status:', error);
-      res.status(500).json({ message: error.message });
     }
   });
 
