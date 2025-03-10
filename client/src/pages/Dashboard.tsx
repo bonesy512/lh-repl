@@ -15,7 +15,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { type Parcel } from "@shared/schema";
-import { CreditCard, Activity, Loader2 } from "lucide-react";
+import { CreditCard, Activity, Loader2, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -23,13 +23,6 @@ interface User {
   id: number;
   username: string;
   credits: number;
-}
-
-interface Invoice {
-  id: number;
-  date: string;
-  amount: number;
-  description: string;
 }
 
 export default function Dashboard() {
@@ -63,17 +56,16 @@ export default function Dashboard() {
   if (authLoading || loadingUser || loadingParcels) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-4 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
-
 
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Overview Cards */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -86,6 +78,14 @@ export default function Dashboard() {
               <p className="text-xs text-muted-foreground">
                 Used for AI analysis and marketing
               </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-4 w-full"
+                onClick={() => navigate("/purchase-tokens")}
+              >
+                Purchase More
+              </Button>
             </CardContent>
           </Card>
 
@@ -99,13 +99,43 @@ export default function Dashboard() {
               <p className="text-xs text-muted-foreground">
                 Total properties analyzed
               </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-4 w-full"
+                onClick={() => setActiveDialog("analysis")}
+              >
+                New Analysis
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Marketing Campaigns</CardTitle>
+              <Plus className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">Create New</div>
+              <p className="text-xs text-muted-foreground">
+                Generate AI-powered marketing materials
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-4 w-full"
+                onClick={() => setActiveDialog("marketing")}
+              >
+                Start Campaign
+              </Button>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs defaultValue="map">
+        <Tabs defaultValue="map" className="space-y-6">
           <TabsList>
             <TabsTrigger value="map">Map View</TabsTrigger>
+            <TabsTrigger value="list">Property List</TabsTrigger>
             <TabsTrigger value="billing">Billing & Usage</TabsTrigger>
           </TabsList>
 
@@ -127,47 +157,84 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="billing" className="space-y-8">
+          <TabsContent value="list" className="space-y-8">
             <div className="grid gap-4">
-              {/* Properties Analyzed Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Properties Analyzed</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {parcels.map((parcel) => (
-                      <div key={parcel.id} className="flex items-start space-x-4 border-b pb-4 last:border-0">
-                        <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium leading-none">
-                            {parcel.address}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {parcel.acres} acres {parcel.price && `• $${parcel.price.toLocaleString()}`}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedParcel(parcel);
-                            }}
-                          >
-                            View Analysis
-                          </Button>
-                        </div>
+              {parcels.map((parcel) => (
+                <Card key={parcel.id} className="hover:bg-accent/5">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">
+                          {typeof parcel.address === 'string' 
+                            ? JSON.parse(parcel.address).street 
+                            : parcel.address.street}
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          {parcel.acres} acres • ${parcel.price?.toLocaleString()}
+                        </p>
                       </div>
-                    ))}
-                    {parcels.length === 0 && (
-                      <div className="text-center py-6 text-muted-foreground">
-                        No properties analyzed yet
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedParcel(parcel)}
+                      >
+                        View Details
+                      </Button>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))}
+              {parcels.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <h3 className="text-lg font-semibold mb-2">No Properties Yet</h3>
+                  <p>Start by analyzing your first property</p>
+                </div>
+              )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="billing" className="space-y-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Usage History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {parcels.map((parcel) => (
+                    <div key={parcel.id} className="flex items-start space-x-4 border-b pb-4 last:border-0">
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          Property Analysis
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {typeof parcel.address === 'string' 
+                            ? JSON.parse(parcel.address).street 
+                            : parcel.address.street}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">5 credits</p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedParcel(parcel);
+                            setActiveDialog("analysis");
+                          }}
+                        >
+                          View Analysis
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {parcels.length === 0 && (
+                    <div className="text-center py-6 text-muted-foreground">
+                      No usage history yet
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
