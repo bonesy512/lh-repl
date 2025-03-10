@@ -68,7 +68,83 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getParcels(userId: number): Promise<Parcel[]> {
-    return db.select().from(parcels).where(eq(parcels.userId, userId));
+    // For testing, return sample Texas parcels if no parcels exist
+    const existingParcels = await db.select().from(parcels).where(eq(parcels.userId, userId));
+
+    if (existingParcels.length === 0) {
+      // Sample Texas parcels for testing
+      const sampleParcels = [
+        {
+          id: 1,
+          userId,
+          address: JSON.stringify({
+            street: "1234 Ranch Road",
+            city: "Austin",
+            state: "TX",
+            zipcode: "78701"
+          }),
+          acres: 25.5,
+          price: 750000,
+          latitude: 30.2672,
+          longitude: -97.7431,
+          details: JSON.stringify({
+            gisArea: 25.5,
+            marketValue: 750000,
+            landValue: 600000,
+            improvementValue: 150000,
+            county: "Travis"
+          })
+        },
+        {
+          id: 2,
+          userId,
+          address: JSON.stringify({
+            street: "5678 Hill Country Blvd",
+            city: "Dallas",
+            state: "TX",
+            zipcode: "75201"
+          }),
+          acres: 15.3,
+          price: 450000,
+          latitude: 32.7767,
+          longitude: -96.7970,
+          details: JSON.stringify({
+            gisArea: 15.3,
+            marketValue: 450000,
+            landValue: 350000,
+            improvementValue: 100000,
+            county: "Dallas"
+          })
+        },
+        {
+          id: 3,
+          userId,
+          address: JSON.stringify({
+            street: "910 Longhorn Lane",
+            city: "Houston",
+            state: "TX",
+            zipcode: "77002"
+          }),
+          acres: 32.7,
+          price: 980000,
+          latitude: 29.7604,
+          longitude: -95.3698,
+          details: JSON.stringify({
+            gisArea: 32.7,
+            marketValue: 980000,
+            landValue: 800000,
+            improvementValue: 180000,
+            county: "Harris"
+          })
+        }
+      ];
+
+      // Insert sample parcels into database
+      await db.insert(parcels).values(sampleParcels);
+      return sampleParcels;
+    }
+
+    return existingParcels;
   }
 
   async createParcel(insertParcel: InsertParcel): Promise<Parcel> {
