@@ -6,7 +6,6 @@ import { promisify } from "util";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-import { createServer } from "http";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,30 +13,6 @@ const __dirname = dirname(__filename);
 console.log('Starting server initialization...');
 
 const execAsync = promisify(exec);
-
-// Function to check if port is in use
-async function isPortInUse(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const server = createServer()
-      .once('error', () => {
-        resolve(true);
-      })
-      .once('listening', () => {
-        server.close();
-        resolve(false);
-      })
-      .listen(port);
-  });
-}
-
-// Function to find available port
-async function findAvailablePort(startPort: number): Promise<number> {
-  let port = startPort;
-  while (await isPortInUse(port)) {
-    port++;
-  }
-  return port;
-}
 
 const app = express();
 app.use(express.json());
@@ -76,6 +51,16 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
+    // Kill any existing process on port 5000
+    try {
+      console.log('Checking for existing process on port 5000...');
+      await execAsync('fuser -k 5000/tcp');
+      console.log('Killed existing process on port 5000');
+    } catch (error) {
+      // Ignore error if no process was found
+      console.log('No existing process found on port 5000');
+    }
+
     console.log('Registering routes...');
     const server = await registerRoutes(app);
 
@@ -90,46 +75,15 @@ app.use((req, res, next) => {
     // Skip Vite middleware in Replit environment
     if (process.env.REPL_ID) {
       console.log('Running in Replit environment...');
-      console.log('Building client...');
-      try {
-        // Ensure the public directory exists
-        const publicDir = path.resolve(__dirname, 'public');
-        const distDir = path.resolve(__dirname, '..', 'dist', 'public');
 
-        if (!fs.existsSync(publicDir)) {
-          fs.mkdirSync(publicDir, { recursive: true });
-        }
-
-        // Change to root directory before running build
-        const rootDir = path.resolve(__dirname, '..');
-        console.log('Root directory:', rootDir);
-        process.chdir(rootDir);
-
-        // Build the client
-        await execAsync('npm run build');
-        console.log('Client built successfully');
-
-        // Copy dist to public
-        if (fs.existsSync(distDir)) {
-          await execAsync(`cp -r ${distDir}/* ${publicDir}/`);
-          console.log('Static files copied successfully');
-        } else {
-          console.log(`Checking alternative build directory locations...`);
-          const altDistDir = path.resolve(__dirname, '..', 'dist');
-          if (fs.existsSync(altDistDir)) {
-            await execAsync(`cp -r ${altDistDir}/* ${publicDir}/`);
-            console.log('Static files copied from alternate location successfully');
-          } else {
-            throw new Error(`Build directory not found: ${distDir} or ${altDistDir}`);
-          }
-        }
-
-        serveStatic(app);
-      } catch (buildError) {
-        console.error('Failed to build client:', buildError);
-        console.error('Error details:', buildError instanceof Error ? buildError.stack : buildError);
-        throw buildError;
+      // Create public directory if it doesn't exist
+      const publicDir = path.resolve(__dirname, 'public');
+      if (!fs.existsSync(publicDir)) {
+        fs.mkdirSync(publicDir, { recursive: true });
       }
+
+      // Serve static files
+      serveStatic(app);
     } else if (app.get("env") === "development") {
       console.log('Setting up Vite for development...');
       await setupVite(app, server);
@@ -138,9 +92,8 @@ app.use((req, res, next) => {
       serveStatic(app);
     }
 
-    // Find available port starting from 5000
-    const port = await findAvailablePort(5000);
-    console.log(`Using port ${port}`);
+    const port = 5000;
+    console.log(`Starting server on port ${port}...`);
 
     server.listen({
       port,
