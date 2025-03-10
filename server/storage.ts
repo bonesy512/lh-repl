@@ -1,6 +1,4 @@
-import { getStorage } from "firebase-admin/storage";
-import { storage as dbStorage } from "./storage";
-import { users, parcels, campaigns, analyses, dataImports } from "@shared/schema";
+import { users, parcels, campaigns, analyses } from "@shared/schema";
 import type { User, InsertUser, Parcel, InsertParcel, Campaign, InsertCampaign, Analysis, InsertAnalysis } from "@shared/schema";
 import { db } from "./db";
 import { eq, gte, lte, desc, sql, and, isNotNull } from "drizzle-orm";
@@ -35,7 +33,6 @@ export interface IStorage {
     maxAcres: number;
     zipCode: string;
   }): Promise<any[]>;
-  importGISDataFromURL(dataType: 'parcel' | 'address', url: string, region: string):Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -292,66 +289,6 @@ export class DatabaseStorage implements IStorage {
 
     console.log(`Found ${results.length} similar properties:`, results);
     return results;
-  }
-
-  async importGISDataFromURL(dataType: 'parcel' | 'address', url: string, region: string): Promise<void> {
-    try {
-      // Create import record
-      const [importRecord] = await db.insert(dataImports).values({
-        sourceType: dataType,
-        region: region,
-        status: 'pending',
-        recordCount: 0,
-        metadata: { url }
-      }).returning();
-
-      // Update status to processing
-      await db
-        .update(dataImports)
-        .set({ status: 'processing' })
-        .where(eq(dataImports.id, importRecord.id));
-
-      // Get Firebase Storage instance
-      const storage = getStorage();
-
-      // Extract file path from Firebase Storage URL
-      const filePathMatch = url.match(/\/o\/(.+?)\?/);
-      if (!filePathMatch) {
-        throw new Error('Invalid Firebase Storage URL format');
-      }
-      const filePath = decodeURIComponent(filePathMatch[1]);
-
-      // Get file reference
-      const fileRef = storage.bucket().file(filePath);
-      const [exists] = await fileRef.exists();
-
-      if (!exists) {
-        throw new Error('File not found in Firebase Storage');
-      }
-
-      // Log the start of processing
-      console.log(`Started import for ${dataType} data from ${filePath} for region ${region}`);
-      console.log('File exists in Firebase Storage, ready for processing');
-
-      // Processing will be handled by a separate worker process
-      // This is just the setup for now
-
-    } catch (error) {
-      console.error('Error starting import:', error);
-
-      // Update import record with error status
-      if (importRecord) {
-        await db
-          .update(dataImports)
-          .set({ 
-            status: 'failed',
-            errorDetails: error.message 
-          })
-          .where(eq(dataImports.id, importRecord.id));
-      }
-
-      throw error;
-    }
   }
 }
 

@@ -6,8 +6,6 @@ import { z } from "zod";
 import { insertUserSchema, insertParcelSchema, insertAnalysisSchema, insertCampaignSchema } from "@shared/schema";
 import { TOKEN_PACKAGES } from "../client/src/lib/stripe";
 import admin from "firebase-admin";
-import { getStorage } from "firebase-admin/storage";
-
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -27,7 +25,6 @@ try {
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: privateKey,
     }),
-    storageBucket: "landhacker-9a7c1.appspot.com" // Add bucket configuration
   });
   console.log('Firebase Admin initialized successfully');
 } catch (error) {
@@ -273,45 +270,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update the import route to handle directory paths
-  app.post("/api/import-gis-data", verifyFirebaseToken, async (req, res) => {
-    try {
-      const { dataType, url, region } = z.object({
-        dataType: z.enum(["parcel", "address"]),
-        url: z.string()
-          .url()
-          .refine(
-            (url) => url.startsWith('https://firebasestorage.googleapis.com/'),
-            'Only Firebase Storage URLs are supported'
-          ),
-        region: z.string(),
-      }).parse(req.body);
-
-      // Get user to associate with import
-      const user = await storage.getUserByFirebaseId(req.user.uid);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Only allow admins/staff to import data
-      if (user.subscriptionTier !== "enterprise") {
-        return res.status(403).json({ message: "Unauthorized to import data" });
-      }
-
-      await storage.importGISDataFromURL(dataType, url, region);
-      res.json({ 
-        message: "Import started successfully",
-        note: "Upload your GIS files to Firebase Storage and use the download URL in this endpoint",
-        example: {
-          downloadUrl: "https://firebasestorage.googleapis.com/v0/b/landhacker-9a7c1.appspot.com/o/Texas%2FAddresses%2Fyour-file.gdbtable",
-          usage: "Get the download URL for each .gdbtable file from Firebase Console"
-        }
-      });
-    } catch (error: any) {
-      console.error('Error starting GIS data import:', error);
-      res.status(400).json({ message: error.message });
-    }
-  });
 
   const httpServer = createServer(app);
   return httpServer;
