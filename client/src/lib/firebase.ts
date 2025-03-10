@@ -1,9 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
-  signInWithCredential,
   GoogleAuthProvider, 
-  signInWithRedirect
+  signInWithRedirect,
+  getRedirectResult,
+  User
 } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
@@ -39,10 +40,7 @@ export function signOut() {
 }
 
 export function onAuthChange(callback: (user: User | null) => void) {
-  return auth.onAuthStateChanged((user) => {
-    console.log("Auth state changed:", user ? "User logged in" : "No user");
-    callback(user);
-  });
+  return auth.onAuthStateChanged(callback);
 }
 
 export { auth, getRedirectResult };

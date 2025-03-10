@@ -25,7 +25,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state observer
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (!mounted) return;
 

@@ -37,7 +37,6 @@ export function Navigation() {
     <header className="border-b">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center space-x-8">
-          {/* Logo */}
           <div 
             className="font-bold text-xl cursor-pointer" 
             onClick={() => navigate("/")}
@@ -45,7 +44,6 @@ export function Navigation() {
             LandHacker
           </div>
 
-          {/* Main Navigation - only show when not logged in */}
           {!user && !isLoading && (
             <nav className="hidden md:flex items-center space-x-4">
               <Button
@@ -64,7 +62,6 @@ export function Navigation() {
           )}
         </div>
 
-        {/* Credits and User Menu */}
         <div className="flex items-center gap-4">
           {isLoading ? (
             <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
