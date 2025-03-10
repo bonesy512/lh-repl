@@ -18,7 +18,7 @@ export function Navigation() {
   const { user, isLoading } = useAuth();
 
   // Add debug logs
-  console.log("Navigation render - Auth state:", { user, isLoading });
+  console.log("Navigation render - Auth state:", { user, isLoading, currentLocation: location });
 
   const handleSignOut = async () => {
     try {
@@ -88,7 +88,10 @@ export function Navigation() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                  <DropdownMenuItem onClick={() => {
+                    console.log("Navigating to dashboard");
+                    navigate("/dashboard");
+                  }}>
                     <Users className="mr-2 h-4 w-4" />
                     <span>Dashboard</span>
                   </DropdownMenuItem>
@@ -99,7 +102,10 @@ export function Navigation() {
                     <Users2 className="mr-2 h-4 w-4" />
                     <span>Team Management</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <DropdownMenuItem onClick={() => {
+                    console.log("Navigating to settings");
+                    navigate("/settings");
+                  }}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </DropdownMenuItem>
