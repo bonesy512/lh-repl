@@ -1,3 +1,4 @@
+// Update the initialization and auth flow handling
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithRedirect, GoogleAuthProvider, User, browserLocalPersistence, setPersistence, getRedirectResult } from "firebase/auth";
 import { getDatabase, ref, get, set } from "firebase/database";
@@ -45,18 +46,27 @@ try {
 export const auth = getAuth(app);
 export const db = getDatabase(app);
 
-// Set persistence to LOCAL
+// Set persistence to LOCAL only if not in webview
 console.log('Setting Firebase persistence to LOCAL...');
 try {
-  setPersistence(auth, browserLocalPersistence)
-    .then(() => {
-      console.log("Firebase persistence set successfully");
-      // Check for redirect result on page load
-      return handleRedirectResult();
-    })
-    .catch((error) => {
-      console.error('Firebase persistence error:', error.message, error.stack);
+  const isWebView = window.parent !== window;
+
+  if (!isWebView) {
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => {
+        console.log("Firebase persistence set successfully");
+        // Check for redirect result on page load
+        return handleRedirectResult();
+      })
+      .catch((error) => {
+        console.error('Firebase persistence error:', error.message, error.stack);
+      });
+  } else {
+    console.log("Skipping persistence setup in webview context");
+    handleRedirectResult().catch(error => {
+      console.error('Redirect result error in webview:', error);
     });
+  }
 } catch (error) {
   console.error('Failed to set persistence:', error);
 }
@@ -125,47 +135,4 @@ export function signOut() {
 // Set up Firebase auth state observer
 auth.onAuthStateChanged((user) => {
   console.log("Auth state changed:", user ? "User logged in" : "User logged out");
-  if (user) {
-    // Add Firebase token to all API requests
-    const originalFetch = window.fetch;
-    window.fetch = async (...args) => {
-      const [resource, config] = args;
-
-      if (typeof resource === 'string' && resource.startsWith('/api')) {
-        try {
-          const token = await user.getIdToken();
-          console.log("Adding auth token to request:", resource);
-          const modifiedConfig = {
-            ...config,
-            headers: {
-              ...config?.headers,
-              "Authorization": `Bearer ${token}`,
-            },
-          };
-          return originalFetch(resource, modifiedConfig);
-        } catch (error) {
-          console.error("Error getting Firebase token:", error);
-          return originalFetch(resource, config);
-        }
-      }
-
-      return originalFetch(resource, config);
-    };
-  }
 });
-
-// Property query functions
-export async function savePropertyQuery(userId: string, property: any) {
-  const queryRef = ref(db, `queries/${userId}/${property.id}`);
-  await set(queryRef, {
-    ...property,
-    timestamp: Date.now()
-  });
-  return property;
-}
-
-export async function getPropertyQuery(userId: string, propertyId: string) {
-  const queryRef = ref(db, `queries/${userId}/${propertyId}`);
-  const snapshot = await get(queryRef);
-  return snapshot.exists() ? snapshot.val() : null;
-}

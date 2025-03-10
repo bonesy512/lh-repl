@@ -19,6 +19,9 @@ async function initializeServer() {
     console.log('Creating Express application...');
     const app = express();
 
+    // Set trust proxy first before any other middleware
+    app.set('trust proxy', 1);
+
     // Import middleware
     console.log('Importing and configuring middleware...');
     const { apiLimiter, authLimiter, errorHandler, requestLogger, corsMiddleware } = await import('./middleware');
