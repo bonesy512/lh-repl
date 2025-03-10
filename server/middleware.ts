@@ -26,7 +26,6 @@ export const authLimiter = rateLimit({
 // Updated CORS middleware to handle credentials
 export const corsMiddleware = cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) {
       callback(null, true);
       return;
@@ -40,7 +39,6 @@ export const corsMiddleware = cors({
       /\.replit\.app$/   // Allow all replit.app subdomains
     ];
 
-    // Check if the origin matches any of our allowed patterns
     const isAllowed = allowedOrigins.some(allowedOrigin => {
       if (allowedOrigin instanceof RegExp) {
         return allowedOrigin.test(origin);
@@ -58,8 +56,8 @@ export const corsMiddleware = cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
+    'Content-Type',
+    'Authorization',
     'X-CSRF-Token',
     'X-Requested-With',
     'Accept',
@@ -67,15 +65,15 @@ export const corsMiddleware = cors({
   ]
 });
 
-// Configure session middleware with proper cookie settings
+// Configure session middleware with SameSite and secure cookie settings
 export const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'landhacker-session-secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { 
+  cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 });
@@ -146,14 +144,14 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
   next();
 };
 
-// CSP Headers
+// Updated CSP Headers with unsafe-eval and necessary domains
 export const cspMiddleware = expressCspHeader({
   directives: {
     'default-src': ["'self'"],
     'script-src': [
-      "'self'", 
+      "'self'",
       "'unsafe-inline'",
-      "'unsafe-eval'", // Required for some JavaScript functionality
+      "'unsafe-eval'", // Required for Firebase and other dependencies
       "https://apis.google.com",
       "https://*.stripe.com",
       "https://*.firebaseapp.com",
@@ -161,15 +159,15 @@ export const cspMiddleware = expressCspHeader({
     ],
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': [
-      "'self'", 
-      "data:", 
+      "'self'",
+      "data:",
       "https://*.googleusercontent.com",
       "https://*.stripe.com",
       "https://api.mapbox.com",
       "https://maps.googleapis.com"
     ],
     'connect-src': [
-      "'self'", 
+      "'self'",
       "https://*.googleapis.com",
       "https://firebaseinstallations.googleapis.com",
       "https://*.stripe.com",
@@ -178,7 +176,7 @@ export const cspMiddleware = expressCspHeader({
       "wss://*.firebaseio.com"
     ],
     'frame-src': [
-      "'self'", 
+      "'self'",
       "https://accounts.google.com",
       "https://*.firebaseapp.com",
       "https://*.stripe.com"

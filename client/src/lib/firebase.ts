@@ -23,7 +23,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase with multiple persistence methods to handle storage partitioning
+// Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 console.log('Current domain:', window.location.hostname);
 console.log('Initializing Firebase with config:', {
@@ -32,18 +32,36 @@ console.log('Initializing Firebase with config:', {
   currentDomain: window.location.hostname
 });
 
+// Detect webview context
+const isWebView = window.parent !== window;
+console.log('Webview detection:', {
+  isEmbedded: isWebView,
+  userAgent: navigator.userAgent
+});
+
+// Initialize auth with appropriate persistence
+let auth;
 try {
-  export const auth = initializeAuth(app, {
-    persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence]
-  });
-  console.log('Firebase initialized successfully');
-  console.log('Setting Firebase persistence to LOCAL...');
+  if (isWebView) {
+    console.log('Skipping persistence setup in webview context');
+    auth = getAuth(app);
+  } else {
+    auth = initializeAuth(app, {
+      persistence: [
+        indexedDBLocalPersistence,
+        browserLocalPersistence,
+        browserSessionPersistence
+      ]
+    });
+    console.log('Firebase initialized successfully');
+    console.log('Setting Firebase persistence to LOCAL...');
+  }
 } catch (error) {
   console.error('Firebase initialization failed:', error);
-  // Fallback to basic auth without persistence if storage access fails
-  export const auth = getAuth(app);
+  auth = getAuth(app);
 }
 
+export { auth };
 export const db = getDatabase(app);
 
 export async function signInWithGoogle(): Promise<User | null> {
@@ -58,19 +76,20 @@ export async function signInWithGoogle(): Promise<User | null> {
     hosted_domain: window.location.hostname
   });
 
-  console.log('Webview detection:', {
-    isEmbedded: window.parent !== window,
-    userAgent: navigator.userAgent
-  });
-
   console.log('Auth environment:', {
-    isWebView: window.parent !== window,
+    isWebView,
     href: window.location.href,
     origin: window.location.origin,
     parent: window.parent === window
   });
 
   try {
+    if (isWebView) {
+      console.log("Detected webview, using redirect auth...");
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+
     console.log("Attempting popup sign-in...");
     const result = await signInWithPopup(auth, provider);
 
@@ -92,19 +111,6 @@ export async function signInWithGoogle(): Promise<User | null> {
       console.log("Popup blocked or storage issue, falling back to redirect...");
       await signInWithRedirect(auth, provider);
       return null;
-    }
-
-    // If we have an ID token from the error, try credential-based sign in
-    if (error.customData?.idToken) {
-      try {
-        console.log("Attempting credential-based sign-in...");
-        const credential = GoogleAuthProvider.credential(error.customData.idToken);
-        const credResult = await signInWithCredential(auth, credential);
-        return credResult.user;
-      } catch (credError) {
-        console.error("Credential sign-in failed:", credError);
-        throw credError;
-      }
     }
 
     throw error;
