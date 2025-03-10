@@ -186,6 +186,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team Management endpoints
+  app.get("/api/team", verifyFirebaseToken, async (req, res) => {
+    try {
+      const user = await storage.getUserByFirebaseId(req.user.uid);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Mock team data for now - replace with actual DB calls when implemented
+      const teamData = {
+        ownerId: user.id,
+        seats: 3,
+        members: [
+          {
+            id: user.id,
+            name: user.username,
+            email: user.email,
+            role: "Owner",
+            allocatedCredits: user.credits
+          }
+          // Additional members would be fetched from storage
+        ]
+      };
+
+      res.json(teamData);
+    } catch (error: any) {
+      console.error('Error fetching team data:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Add seat endpoint
+  app.post("/api/team/seats", verifyFirebaseToken, async (req, res) => {
+    try {
+      const user = await storage.getUserByFirebaseId(req.user.uid);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // This would connect to Stripe to process payment
+      // For now, just return success response
+      res.json({ success: true, message: "Seat added successfully" });
+    } catch (error: any) {
+      console.error('Error adding seat:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Invite team member endpoint
+  app.post("/api/team/invite", verifyFirebaseToken, async (req, res) => {
+    try {
+      const user = await storage.getUserByFirebaseId(req.user.uid);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // This would send an invitation email and store the invitation in the database
+      // For now, just return success response
+      res.json({ success: true, message: `Invitation sent to ${email}` });
+    } catch (error: any) {
+      console.error('Error inviting team member:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
