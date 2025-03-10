@@ -9,7 +9,8 @@ import {
   indexedDBLocalPersistence,
   initializeAuth,
   User,
-  getRedirectResult
+  getRedirectResult,
+  signInWithCredential
 } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
@@ -42,13 +43,19 @@ export async function signInWithGoogle(): Promise<User | null> {
   try {
     console.log("Attempting popup sign-in...");
     const result = await signInWithPopup(auth, provider);
+
+    // Get ID token for additional verification if needed
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const idToken = credential?.idToken;
+
     console.log("Popup sign-in successful", { 
-      hasToken: !!GoogleAuthProvider.credentialFromResult(result)?.accessToken,
+      hasIdToken: !!idToken,
       email: result.user.email 
     });
+
     return result.user;
   } catch (error: any) {
-    // Handle popup blocked or storage access issues
+    // Handle popup blocked, storage access issues, or authentication errors
     if (error.code === 'auth/popup-blocked' || 
         error.code === 'auth/cancelled-popup-request' || 
         error.code.includes('storage')) {
@@ -56,6 +63,20 @@ export async function signInWithGoogle(): Promise<User | null> {
       await signInWithRedirect(auth, provider);
       return null;
     }
+
+    // If we have an ID token from the error, try credential-based sign in
+    if (error.customData?.idToken) {
+      try {
+        console.log("Attempting credential-based sign-in...");
+        const credential = GoogleAuthProvider.credential(error.customData.idToken);
+        const credResult = await signInWithCredential(auth, credential);
+        return credResult.user;
+      } catch (credError) {
+        console.error("Credential sign-in failed:", credError);
+        throw credError;
+      }
+    }
+
     throw error;
   }
 }
@@ -70,8 +91,6 @@ export function onAuthChange(callback: (user: User | null) => void) {
     console.log("Auth state changed:", {
       state: user ? "logged_in" : "logged_out",
       email: user?.email,
-      // Remove reference to persistenceManager which isn't available in the type
-      currentPersistence: auth._persistenceManager?.persistence
     });
     callback(user);
   });
