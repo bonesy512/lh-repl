@@ -1,132 +1,71 @@
-
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
-  signInWithPopup, 
-  signInWithRedirect, 
+  signInWithPopup,
+  signInWithRedirect,
   GoogleAuthProvider, 
-  getRedirectResult,
-  browserLocalPersistence, 
+  browserLocalPersistence,
   browserSessionPersistence,
-  setPersistence,
-  onAuthStateChanged,
-  signOut as firebaseSignOut
+  indexedDBLocalPersistence,
+  initializeAuth,
+  getRedirectResult,
+  User
 } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getDatabase } from "firebase/database";
 
-// Your Firebase configuration
-// Replace with your own Firebase config if needed
 const firebaseConfig = {
-  apiKey: "AIzaSyA8r5GLzlroj3PD0KJlS20YQr8jxoL_NHA",
-  authDomain: "landhacker-9a7c1.firebaseapp.com",
-  projectId: "landhacker-9a7c1",
-  storageBucket: "landhacker-9a7c1.appspot.com",
-  messagingSenderId: "844456245603",
-  appId: "1:844456245603:web:9d5a9c1affd2e49c4158ca",
-  measurementId: "G-6DJTQ4J7RF"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
+// Initialize Firebase with all possible persistence methods
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence]
+});
+export const db = getDatabase(app);
 
-// Configure persistent session
-setPersistence(auth, browserLocalPersistence)
-  .then(() => {
-    console.log("Firebase persistence set successfully");
-  })
-  .catch((error) => {
-    console.error("Error setting persistence:", error);
-  });
-
-/**
- * Signs in with Google using Firebase
- * Attempts popup first, falls back to redirect
- */
-export async function signInWithGoogle() {
+export async function signInWithGoogle(): Promise<User | null> {
   const provider = new GoogleAuthProvider();
-  
-  // Add scopes for additional permissions
   provider.addScope('email');
   provider.addScope('profile');
-  
-  // Set custom parameters
+
+  // Set custom parameters for better compatibility
   provider.setCustomParameters({
-    'prompt': 'select_account'
+    prompt: 'select_account'
   });
-  
+
   try {
-    console.log("Initiating Google sign-in popup...");
+    console.log("Attempting popup sign-in...");
     const result = await signInWithPopup(auth, provider);
-    
-    // This gives you a Google Access Token
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    const token = credential?.accessToken;
-    
-    // The signed-in user info
-    const user = result.user;
-    console.log("Google sign-in successful:", user.email);
-    
-    return { user, token };
+    console.log("Popup sign-in successful", { 
+      hasToken: !!GoogleAuthProvider.credentialFromResult(result)?.accessToken,
+      email: result.user.email 
+    });
+    return result.user;
   } catch (error: any) {
-    // Handle popup blocked error by falling back to redirect
-    if (error.code === 'auth/popup-blocked') {
-      console.log("Popup blocked, trying redirect...");
+    if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+      console.log("Popup blocked or cancelled, falling back to redirect...");
       await signInWithRedirect(auth, provider);
       return null;
     }
-    
-    console.error("Google sign-in error:", error.code, error.message);
     throw error;
   }
 }
 
-/**
- * Processes the redirect result after a redirect sign-in
- */
-export async function handleRedirectResult() {
-  try {
-    const result = await getRedirectResult(auth);
-    if (result) {
-      // This gives you a Google Access Token
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential?.accessToken;
-      
-      // The signed-in user info
-      const user = result.user;
-      console.log("Redirect sign-in successful:", user.email);
-      
-      return { user, token };
-    }
-    return null;
-  } catch (error) {
-    console.error("Error handling redirect result:", error);
-    throw error;
-  }
+export function signOut() {
+  return auth.signOut();
 }
 
-/**
- * Signs out the current user
- */
-export async function signOut() {
-  try {
-    await firebaseSignOut(auth);
-    console.log("User signed out successfully");
-  } catch (error) {
-    console.error("Error signing out:", error);
-    throw error;
-  }
-}
-
-/**
- * Sets up an auth state observer
- * @param callback Function to call when auth state changes
- */
-export function onAuthChange(callback: (user: any) => void) {
-  return onAuthStateChanged(auth, (user) => {
+// Set up auth state observer
+export function onAuthChange(callback: (user: User | null) => void) {
+  return auth.onAuthStateChanged((user) => {
+    console.log("Auth state changed:", user ? "User logged in" : "User logged out");
     callback(user);
   });
 }
 
-export { auth, db };
+export { getRedirectResult };
