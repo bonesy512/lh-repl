@@ -12,7 +12,10 @@ export default function Login() {
   // Redirect to dashboard if already logged in
   useEffect(() => {
     if (user) {
-      console.log("User already logged in, redirecting to dashboard");
+      console.log("Auth state detected user, redirecting to dashboard:", {
+        userId: user.id,
+        email: user.email
+      });
       navigate("/dashboard");
     }
   }, [user, navigate]);

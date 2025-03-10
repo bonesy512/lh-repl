@@ -36,12 +36,13 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
   const [activeDialog, setActiveDialog] = useState<"analysis" | "marketing" | null>(null);
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation();
   const { user: authUser, isLoading: authLoading } = useAuth();
 
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !authUser) {
+      console.log("No authenticated user, redirecting to login");
       navigate("/login");
       return;
     }
@@ -55,25 +56,18 @@ export default function Dashboard() {
 
   const { data: parcels = [], isLoading: loadingParcels } = useQuery<Parcel[]>({
     queryKey: ["/api/parcels"],
-    enabled: !!authUser,
-    onSuccess: (data) => {
-      console.log("Fetched parcels:", data);
-    },
+    enabled: !!authUser
   });
 
   // Show loading state for the entire dashboard
   if (authLoading || loadingUser || loadingParcels) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-4 animate-spin" />
       </div>
     );
   }
 
-  // Show error state
-  if (!authUser) {
-    return null; // Will be redirected by useEffect
-  }
 
   return (
     <div className="min-h-screen bg-background">

@@ -32,30 +32,84 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    try {
+      const [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          firebaseUid: users.firebaseUid,
+          credits: users.credits,
+        })
+        .from(users)
+        .where(eq(users.id, id));
+      return user;
+    } catch (error) {
+      console.error('Error fetching user by ID:', error);
+      throw error;
+    }
   }
 
   async getUserByFirebaseId(firebaseUid: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
-    return user;
+    try {
+      console.log('Fetching user by Firebase UID:', firebaseUid);
+      const [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          firebaseUid: users.firebaseUid,
+          credits: users.credits,
+        })
+        .from(users)
+        .where(eq(users.firebaseUid, firebaseUid));
+      return user;
+    } catch (error) {
+      console.error('Error fetching user by Firebase UID:', error);
+      throw error;
+    }
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+    try {
+      console.log('Creating new user:', insertUser);
+      const [user] = await db
+        .insert(users)
+        .values(insertUser)
+        .returning({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          firebaseUid: users.firebaseUid,
+          credits: users.credits,
+        });
+      return user;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
   }
 
   async updateUserCredits(id: number, credits: number): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({ credits })
-      .where(eq(users.id, id))
-      .returning();
-    return user;
+    try {
+      const [user] = await db
+        .update(users)
+        .set({ credits })
+        .where(eq(users.id, id))
+        .returning({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          firebaseUid: users.firebaseUid,
+          credits: users.credits,
+        });
+      return user;
+    } catch (error) {
+      console.error('Error updating user credits:', error);
+      throw error;
+    }
   }
 
-  // Parcel operations
   async getParcel(id: number): Promise<Parcel | undefined> {
     const [parcel] = await db.select().from(parcels).where(eq(parcels.id, id));
     return parcel;
@@ -146,7 +200,6 @@ export class DatabaseStorage implements IStorage {
     return parcel;
   }
 
-  // Analysis operations
   async getAnalysis(id: number): Promise<Analysis | undefined> {
     const [analysis] = await db.select().from(analyses).where(eq(analyses.id, id));
     return analysis;

@@ -43,14 +43,15 @@ export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   try {
     console.log('Attempting sign in with popup...');
-    // Attempt signInWithPopup first
     const result = await signInWithPopup(auth, provider);
-    console.log('Popup sign in successful:', result.user.email);
+    console.log('Google sign in successful:', {
+      email: result.user.email,
+      displayName: result.user.displayName
+    });
     return result;
   } catch (error: any) {
     console.error("signInWithPopup failed:", error);
     console.log('Falling back to redirect sign in...');
-    // Fallback to signInWithRedirect if popup fails (e.g., in certain environments)
     try {
       await signInWithRedirect(auth, provider);
     } catch (redirectError: any) {
@@ -61,6 +62,7 @@ export async function signInWithGoogle() {
 }
 
 export function signOut() {
+  console.log('Signing out user...');
   return firebaseSignOut(auth);
 }
 
@@ -69,7 +71,10 @@ export async function handleRedirectResult() {
   try {
     const result = await getRedirectResult(auth);
     if (result) {
-      console.log("Redirect result successful:", result.user.email);
+      console.log("Redirect result successful:", {
+        email: result.user.email,
+        displayName: result.user.displayName
+      });
       return result.user;
     }
     return null;
@@ -79,7 +84,13 @@ export async function handleRedirectResult() {
   }
 }
 
-// Set up Firebase auth state observer
+// Set up Firebase auth state observer with enhanced logging
 auth.onAuthStateChanged((user) => {
-  console.log("Auth state changed:", user ? `User logged in: ${user.email}` : "User logged out");
+  console.log("Auth state changed:", user ? {
+    email: user.email,
+    displayName: user.displayName,
+    uid: user.uid,
+    isAnonymous: user.isAnonymous,
+    emailVerified: user.emailVerified
+  } : "User logged out");
 });

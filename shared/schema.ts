@@ -11,6 +11,17 @@ export const users = pgTable("users", {
   credits: integer("credits").notNull().default(0),
 });
 
+// Export types
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
+// Insert schema
+export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  email: true,
+  firebaseUid: true,
+});
+
 // Parcel table
 export const parcels = pgTable("parcels", {
   id: serial("id").primaryKey(),
@@ -34,9 +45,6 @@ export const analyses = pgTable("analyses", {
 });
 
 // Export types
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
-
 export type Parcel = typeof parcels.$inferSelect;
 export type InsertParcel = z.infer<typeof insertParcelSchema>;
 
@@ -44,12 +52,6 @@ export type Analysis = typeof analyses.$inferSelect;
 export type InsertAnalysis = z.infer<typeof insertAnalysisSchema>;
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  email: true,
-  firebaseUid: true,
-});
-
 export const insertParcelSchema = createInsertSchema(parcels).pick({
   address: true,
   latitude: true,
