@@ -21,19 +21,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [, navigate] = useLocation();
 
-  // Handle Firebase auth state changes
+  // Set up auth state observer
   useEffect(() => {
-    console.log("Setting up auth state listener");
-    let mounted = true;
-
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      console.log("Auth state changed:", firebaseUser ? "User logged in" : "User logged out");
-
-      if (!mounted) return;
-
-      try {
-        if (firebaseUser) {
-          console.log("Syncing Firebase user with backend:", firebaseUser.email);
+      if (firebaseUser) {
+        try {
           const res = await apiRequest("POST", "/api/auth/login", {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -41,61 +33,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
 
           const userData = await res.json();
-          console.log("Backend sync successful:", userData);
-
           queryClient.setQueryData(["/api/user"], userData);
-          console.log("Redirecting to dashboard...");
           navigate("/dashboard");
-
+        } catch (error) {
+          console.error("Auth state sync failed:", error);
           toast({
-            title: "Welcome!",
-            description: "Successfully logged in.",
+            title: "Authentication Error",
+            description: "Failed to complete sign-in process.",
+            variant: "destructive",
           });
-        } else {
-          console.log("No Firebase user, clearing user data");
-          queryClient.setQueryData(["/api/user"], null);
         }
-      } catch (error) {
-        console.error("Auth state sync failed:", error);
-        toast({
-          title: "Authentication Error",
-          description: "Failed to complete sign-in process.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+      } else {
+        queryClient.setQueryData(["/api/user"], null);
       }
+      setIsLoading(false);
     });
 
-    return () => {
-      mounted = false;
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [toast, navigate]);
 
-  // Get user data from backend
   const { data: user, error } = useQuery<User | null>({
     queryKey: ["/api/user"],
-    queryFn: async () => {
-      try {
-        const response = await getQueryFn({ on401: "returnNull" })();
-        console.log("User data fetched:", response);
-        return response || null;
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        return null;
-      }
-    },
+    queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: !isLoading,
   });
 
   const loginMutation = useMutation({
-    mutationFn: async () => {
-      console.log("Starting Google sign-in...");
-      return await signInWithGoogle();
-    },
+    mutationFn: signInWithGoogle,
     onError: (error: Error) => {
-      console.error("Login mutation failed:", error);
       toast({
         title: "Login failed",
         description: error.message,
@@ -106,12 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      console.log("Starting logout process...");
       await signOut();
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      console.log("Logout successful");
       queryClient.setQueryData(["/api/user"], null);
       queryClient.clear();
       navigate("/login");
@@ -121,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
-      console.error("Logout failed:", error);
       toast({
         title: "Logout failed",
         description: error.message,
