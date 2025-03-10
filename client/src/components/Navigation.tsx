@@ -25,9 +25,6 @@ export function Navigation() {
   const [location, navigate] = useLocation();
   const { user, isLoading } = useAuth();
 
-  // Debug log for auth state
-  console.log("Navigation render - Auth state:", { user, isLoading, currentLocation: location });
-
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -46,6 +43,7 @@ export function Navigation() {
   return (
     <header className="border-b">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        {/* Logo and Public Links */}
         <div className="flex items-center space-x-8">
           <div 
             className="font-bold text-xl cursor-pointer" 
@@ -72,6 +70,7 @@ export function Navigation() {
           )}
         </div>
 
+        {/* User Menu */}
         <div className="flex items-center gap-4">
           {isLoading ? (
             <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
