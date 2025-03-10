@@ -78,7 +78,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
         console.log('Creating new user');
-        user = await storage.createUser(data);
+        try {
+          user = await storage.createUser(data);
+        } catch (createError) {
+          console.error('Error creating user:', createError);
+          // Handle the error explicitly without referencing subscription_tier
+          return res.status(500).json({ message: "Failed to create user account" });
+        }
       }
 
       console.log('Login successful:', user);
@@ -92,14 +98,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User endpoints
   app.get("/api/user", verifyFirebaseToken, async (req, res) => {
     try {
+      console.log('Fetching user with Firebase UID:', req.user.uid);
       const user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
+        console.log('User not found in database for UID:', req.user.uid);
         return res.status(404).json({ message: "User not found" });
       }
+      console.log('User found:', user);
       res.json(user);
     } catch (error: any) {
       console.error('Error fetching user:', error);
-      res.status(500).json({ message: error.message });
+      console.error('Error details:', error.stack);
+      res.status(500).json({ 
+        message: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 
@@ -170,83 +183,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message: error.message });
     }
   });
-
-  // Payment endpoints
-  app.post("/api/create-payment-intent", async (req, res) => {
-    try {
-      const { packageId } = z.object({
-        packageId: z.enum(["basic", "pro", "enterprise"])
-      }).parse(req.body);
-
-      const pkg = TOKEN_PACKAGES[packageId];
-
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: pkg.price,
-        currency: "usd",
-        metadata: {
-          packageId,
-          tokens: pkg.tokens.toString(),
-        },
-      });
-
-      res.json({ clientSecret: paymentIntent.client_secret });
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
-    }
-  });
-
-  // Stripe webhook
-  app.post("/api/webhook", async (req, res) => {
-    const sig = req.headers["stripe-signature"];
-
-    try {
-      const event = stripe.webhooks.constructEvent(
-        req.body,
-        sig as string,
-        process.env.STRIPE_WEBHOOK_SECRET as string
-      );
-
-      if (event.type === "payment_intent.succeeded") {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        const tokens = parseInt(paymentIntent.metadata.tokens);
-        const userId = parseInt(paymentIntent.metadata.userId);
-
-        const user = await storage.getUser(userId);
-        if (user) {
-          await storage.updateUserCredits(userId, user.credits + tokens);
-        }
-      }
-
-      res.json({ received: true });
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
-    }
-  });
-
-  // Add new endpoint for getting acre prices
-  app.post("/api/acres-prices", verifyFirebaseToken, async (req, res) => {
-    try {
-      const { city, acres, zip_code } = z.object({
-        city: z.string(),
-        acres: z.number(),
-        zip_code: z.string()
-      }).parse(req.body);
-
-      // Get similar properties from database
-      const similarProperties = await storage.getSimilarProperties({
-        city,
-        acres: acres * 0.75, // Lower bound (within 25%)
-        maxAcres: acres * 1.25, // Upper bound (within 25%)
-        zipCode: zip_code
-      });
-
-      res.json({ prices: similarProperties });
-    } catch (error: any) {
-      console.error('Error getting acre prices:', error);
-      res.status(400).json({ message: error.message });
-    }
-  });
-
 
   const httpServer = createServer(app);
   return httpServer;
