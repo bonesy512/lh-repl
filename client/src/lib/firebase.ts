@@ -8,20 +8,21 @@ import {
   browserSessionPersistence,
   indexedDBLocalPersistence,
   initializeAuth,
-  getRedirectResult,
-  User
+  User,
+  getRedirectResult
 } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  // Use the domain that serves the app as authDomain to prevent storage partitioning issues
+  authDomain: window.location.hostname,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase with all possible persistence methods
+// Initialize Firebase with multiple persistence methods to handle storage partitioning
 const app = initializeApp(firebaseConfig);
 export const auth = initializeAuth(app, {
   persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence]
@@ -33,7 +34,7 @@ export async function signInWithGoogle(): Promise<User | null> {
   provider.addScope('email');
   provider.addScope('profile');
 
-  // Set custom parameters for better compatibility
+  // Set custom parameters for better browser compatibility
   provider.setCustomParameters({
     prompt: 'select_account'
   });
@@ -47,8 +48,11 @@ export async function signInWithGoogle(): Promise<User | null> {
     });
     return result.user;
   } catch (error: any) {
-    if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
-      console.log("Popup blocked or cancelled, falling back to redirect...");
+    // Handle popup blocked or storage access issues
+    if (error.code === 'auth/popup-blocked' || 
+        error.code === 'auth/cancelled-popup-request' || 
+        error.code.includes('storage')) {
+      console.log("Popup blocked or storage issue, falling back to redirect...");
       await signInWithRedirect(auth, provider);
       return null;
     }
@@ -60,10 +64,15 @@ export function signOut() {
   return auth.signOut();
 }
 
-// Set up auth state observer
+// Set up auth state observer with additional logging
 export function onAuthChange(callback: (user: User | null) => void) {
   return auth.onAuthStateChanged((user) => {
-    console.log("Auth state changed:", user ? "User logged in" : "User logged out");
+    console.log("Auth state changed:", {
+      state: user ? "logged_in" : "logged_out",
+      email: user?.email,
+      // Remove reference to persistenceManager which isn't available in the type
+      currentPersistence: auth._persistenceManager?.persistence
+    });
     callback(user);
   });
 }

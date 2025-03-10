@@ -46,13 +46,13 @@ async function initializeServer() {
 
     // Apply CORS middleware first
     app.use(corsMiddleware);
-    
+
     // Add session support
     app.use(sessionMiddleware);
-    
+
     // Generate CSRF token for all requests
     app.use(generateCsrfToken);
-    
+
     // Add CSP headers
     app.use(cspMiddleware);
 
@@ -156,21 +156,57 @@ async function killExistingProcess() {
   }
 }
 
-// Start the server
-killExistingProcess()
-  .then(() => initializeServer())
-  .then(server => {
-    const port = 5000;
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
-      log(`Server started successfully, listening on port ${port}`);
-    });
-  })
-  .catch(error => {
-    console.error('Failed to start server:', error);
-    console.error('Error details:', error instanceof Error ? error.stack : error);
-    process.exit(1);
-  });
+// Modify the startServer function to try alternative ports
+async function startServer(retries = 3, delay = 1000) {
+  let lastError;
+  const ports = [5000, 3000, 8080]; // Try these ports in order
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    for (const port of ports) {
+      try {
+        await killExistingProcess();
+        const server = await initializeServer();
+
+        await new Promise((resolve, reject) => {
+          server.listen({
+            port,
+            host: "0.0.0.0",
+            reusePort: true,
+          })
+          .once('error', (err) => {
+            console.error(`Server start attempt ${attempt} on port ${port} failed:`, err);
+            reject(err);
+          })
+          .once('listening', () => {
+            console.log(`Server started successfully on port ${port} (attempt ${attempt})`);
+            // Set the port for Vite to use
+            process.env.PORT = port.toString();
+            resolve(true);
+          });
+        });
+
+        return; // Success, exit both loops
+      } catch (error) {
+        lastError = error;
+        console.error(`Start attempt ${attempt} on port ${port} failed:`, error);
+
+        if (port === ports[ports.length - 1] && attempt < retries) {
+          console.log(`All ports failed, retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+  }
+
+  // If we get here, all retries on all ports failed
+  console.error('Failed to start server after', retries, 'attempts on ports:', ports);
+  console.error('Last error:', lastError);
+  process.exit(1);
+}
+
+// Start the server with retries
+startServer().catch(error => {
+  console.error('Fatal error starting server:', error);
+  console.error('Error details:', error instanceof Error ? error.stack : error);
+  process.exit(1);
+});

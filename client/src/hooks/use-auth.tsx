@@ -35,7 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mounted) return;
 
         if (result?.user) {
-          // Handle successful redirect sign-in
+          console.log("Processing redirect result for user:", result.user.email);
+
           try {
             const res = await apiRequest("POST", "/api/auth/login", {
               uid: result.user.uid,
@@ -63,7 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error: any) {
         console.error("Auth initialization error:", error);
-        if (mounted) {
+        // Handle storage partitioning specific errors
+        if (error.message?.includes('storage') || error.message?.includes('initial state')) {
+          toast({
+            title: "Browser Storage Error",
+            description: "Please ensure third-party cookies are enabled or try a different browser.",
+            variant: "destructive",
+          });
+        } else {
           toast({
             title: "Login Error",
             description: error.message,
