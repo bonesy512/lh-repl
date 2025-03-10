@@ -42,7 +42,7 @@ export default function Dashboard() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !authUser) {
-      navigate("/auth");
+      navigate("/login");
       return;
     }
   }, [authUser, authLoading, navigate]);

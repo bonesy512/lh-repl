@@ -26,7 +26,6 @@ function Router() {
           <Route path="/features" component={Features} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/login" component={Login} />
-          <Route path="/auth" component={Login} /> {/* Consolidate auth routes to Login */}
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/team" component={TeamMembers} />
           <Route path="/beta" component={BetaLanding} />

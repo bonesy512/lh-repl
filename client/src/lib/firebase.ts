@@ -12,6 +12,13 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
+console.log('Initializing Firebase with config:', {
+  projectId: firebaseConfig.projectId,
+  authDomain: firebaseConfig.authDomain,
+  hasApiKey: !!firebaseConfig.apiKey,
+  hasAppId: !!firebaseConfig.appId
+});
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
@@ -35,16 +42,20 @@ export async function getPropertyQuery(userId: string, propertyId: string) {
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   try {
+    console.log('Attempting sign in with popup...');
     // Attempt signInWithPopup first
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    console.log('Popup sign in successful:', result.user.email);
+    return result;
   } catch (error: any) {
     console.error("signInWithPopup failed:", error);
+    console.log('Falling back to redirect sign in...');
     // Fallback to signInWithRedirect if popup fails (e.g., in certain environments)
     try {
       await signInWithRedirect(auth, provider);
     } catch (redirectError: any) {
       console.error("signInWithRedirect failed:", redirectError);
-      throw redirectError;
+      throw new Error(`Authentication failed: ${redirectError.message}`);
     }
   }
 }
@@ -58,7 +69,7 @@ export async function handleRedirectResult() {
   try {
     const result = await getRedirectResult(auth);
     if (result) {
-      console.log("Redirect result successful:", result.user);
+      console.log("Redirect result successful:", result.user.email);
       return result.user;
     }
     return null;
@@ -70,5 +81,5 @@ export async function handleRedirectResult() {
 
 // Set up Firebase auth state observer
 auth.onAuthStateChanged((user) => {
-  console.log("Auth state changed:", user ? "User logged in" : "User logged out");
+  console.log("Auth state changed:", user ? `User logged in: ${user.email}` : "User logged out");
 });
