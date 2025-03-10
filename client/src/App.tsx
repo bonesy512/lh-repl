@@ -13,12 +13,11 @@ import Features from "@/pages/Features";
 import Pricing from "@/pages/Pricing";
 import Dashboard from "@/pages/Dashboard";
 import TeamMembers from "@/pages/TeamMembers";
-import AuthPage from "@/pages/Login";
+import AuthPage from "@/pages/AuthPage"; 
 import BetaLanding from "@/pages/BetaLanding";
 import NotFound from "@/pages/not-found";
 import Subscription from "@/pages/Subscription";
 import PurchaseTokens from "@/pages/PurchaseTokens";
-import './App.css';
 
 function Router() {
   const { 
