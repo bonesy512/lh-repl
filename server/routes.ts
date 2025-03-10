@@ -194,21 +194,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Mock team data for now - replace with actual DB calls when implemented
-      const teamData = {
-        ownerId: user.id,
-        seats: 3,
-        members: [
-          {
-            id: user.id,
-            name: user.username,
-            email: user.email,
-            role: "Owner",
-            allocatedCredits: user.credits
-          }
-          // Additional members would be fetched from storage
-        ]
-      };
+      const teamData = await storage.getTeamByOwnerId(user.id); // Replace with actual DB call
+
+      if (!teamData) {
+          return res.status(404).json({ message: "Team not found" });
+      }
 
       res.json(teamData);
     } catch (error: any) {

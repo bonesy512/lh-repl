@@ -34,7 +34,7 @@ function Router() {
           <Route path="/beta" component={BetaLanding} />
           <Route path="/purchase-tokens" component={PurchaseTokens} />
           <Route path="/team-management" component={TeamManagement} />
-          <Route path="/settings" component={Settings} /> {/* Added route for Settings */}
+          <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
       </main>
