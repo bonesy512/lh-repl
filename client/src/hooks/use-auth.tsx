@@ -31,13 +31,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check for redirect result and handle initial auth state
     const handleAuth = async () => {
       try {
+        console.log("🔄 Checking for redirect result...");
         const result = await getRedirectResult(auth);
         if (!mounted) return;
 
         if (result?.user) {
-          console.log("Processing redirect result for user:", result.user.email);
+          console.log("✅ Got redirect result for user:", result.user.email);
 
           try {
+            console.log("🔄 Syncing user with backend...");
             const res = await apiRequest("POST", "/api/auth/login", {
               uid: result.user.uid,
               email: result.user.email,
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (!mounted) return;
 
             const userData = await res.json();
+            console.log("✅ Backend sync successful:", userData);
             queryClient.setQueryData(["/api/user"], userData);
 
             toast({
@@ -54,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               description: "Successfully logged in.",
             });
           } catch (error) {
-            console.error("Error syncing redirect user:", error);
+            console.error("❌ Backend sync failed:", error);
             toast({
               title: "Error",
               description: "Failed to complete sign-in process.",
@@ -63,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error: any) {
-        console.error("Auth initialization error:", error);
+        console.error("❌ Auth initialization error:", error);
         // Handle storage partitioning specific errors
         if (error.message?.includes('storage') || error.message?.includes('initial state')) {
           toast({
@@ -88,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser && !isLoading) {
         // Only sync with backend for non-redirect auth changes
         try {
+          console.log("🔄 Syncing auth state change with backend...");
           const res = await apiRequest("POST", "/api/auth/login", {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -95,9 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
 
           const userData = await res.json();
+          console.log("✅ Auth state sync successful:", userData);
           queryClient.setQueryData(["/api/user"], userData);
         } catch (error) {
-          console.error("Error syncing user:", error);
+          console.error("❌ Auth state sync failed:", error);
         }
       }
 
@@ -123,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async () => {
       if (isWebView) {
         const newTabUrl = window.location.origin + "/auth";
-        console.log("Opening auth in new tab:", newTabUrl);
+        console.log("🔄 Opening auth in new tab:", newTabUrl);
         window.open(newTabUrl, "_blank");
         toast({
           title: "Authentication",
@@ -132,9 +137,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
+      console.log("🔄 Starting Google sign-in process...");
       return await signInWithGoogle();
     },
     onError: (error: Error) => {
+      console.error("❌ Login mutation failed:", error);
       toast({
         title: "Login failed",
         description: error.message,
@@ -146,10 +153,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
+      console.log("🔄 Starting logout process...");
       await signOut();
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
+      console.log("✅ Logout successful");
       queryClient.setQueryData(["/api/user"], null);
       queryClient.clear();
       toast({
@@ -158,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
+      console.error("❌ Logout failed:", error);
       toast({
         title: "Logout failed",
         description: error.message,
