@@ -23,10 +23,10 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 function Router() {
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Temporary minimal header */}
+      {/* Simple static header with no navigation */}
       <header className="border-b">
         <div className="container mx-auto px-4 h-16 flex items-center">
-          <span className="font-bold">LandHacker (Temporary Header)</span>
+          <span className="font-bold">LandHacker</span>
         </div>
       </header>
 

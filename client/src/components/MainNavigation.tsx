@@ -1,1 +1,1 @@
-// This file is intentionally empty and will be replaced with a new implementation
+// Intentionally empty - do not use this file
