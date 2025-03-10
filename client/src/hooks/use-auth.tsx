@@ -159,3 +159,127 @@ export function useAuth() {
   }
   return context;
 }
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { auth, signInWithGoogle, signOut, handleRedirectResult, onAuthChange } from '@/lib/firebase';
+import { User } from 'firebase/auth';
+import { api } from '@/lib/api';
+
+interface AuthContextType {
+  user: User | null;
+  userData: any | null;
+  loading: boolean;
+  error: Error | null;
+  signIn: () => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  userData: null,
+  loading: true,
+  error: null,
+  signIn: async () => {},
+  logout: async () => {},
+});
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  // Check for redirect result on mount
+  useEffect(() => {
+    const checkRedirectResult = async () => {
+      try {
+        const result = await handleRedirectResult();
+        if (result?.user) {
+          console.log("Redirect authentication successful");
+        }
+      } catch (err) {
+        console.error("Redirect authentication error:", err);
+        setError(err instanceof Error ? err : new Error('Unknown authentication error'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkRedirectResult();
+  }, []);
+
+  // Set up auth state observer
+  useEffect(() => {
+    const unsubscribe = onAuthChange((authUser) => {
+      setUser(authUser);
+      setLoading(false);
+
+      // If user is logged in, fetch user data from API
+      if (authUser) {
+        fetchUserData(authUser);
+      } else {
+        setUserData(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch user data from API when authenticated
+  const fetchUserData = async (authUser: User) => {
+    try {
+      setLoading(true);
+      // Get ID token for backend authentication
+      const token = await authUser.getIdToken();
+      
+      // Call backend API to get user data
+      const response = await api.get('/api/user', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      setUserData(response.data);
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch user data'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signIn = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log("Starting Google sign-in process...");
+      await signInWithGoogle();
+    } catch (err) {
+      console.error("Sign in error:", err);
+      setError(err instanceof Error ? err : new Error('Sign in failed'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      setLoading(true);
+      await signOut();
+      setUser(null);
+      setUserData(null);
+    } catch (err) {
+      console.error("Logout error:", err);
+      setError(err instanceof Error ? err : new Error('Logout failed'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, userData, loading, error, signIn, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export const useAuth = () => useContext(AuthContext);

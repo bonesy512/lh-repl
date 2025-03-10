@@ -1,31 +1,75 @@
-
 import { expressCspHeader } from 'express-csp-header';
 import { v4 as uuidv4 } from 'uuid';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { NextFunction, Request, Response } from 'express';
+import session from 'express-session';
 
-// Rate limiters
+// Rate limiter for API requests
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again after 15 minutes'
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: { message: 'Too many requests, please try again later.' },
 });
 
+// More strict rate limiter for authentication endpoints
 export const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // Limit each IP to 5 login requests per hour
-  message: 'Too many login attempts from this IP, please try again after an hour'
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 login attempts per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many login attempts, please try again later.' },
 });
 
-// CORS middleware
+// CORS middleware with proper configuration
 export const corsMiddleware = cors({
-  origin: function (origin, callback) {
-    // In production, you would want to restrict this to your domain
-    // For development, allow all origins
-    callback(null, true);
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5000',
+      'http://localhost:5173',
+      /\.replit\.dev$/,  // Allow all replit.dev subdomains
+      /\.replit\.app$/   // Allow all replit.app subdomains
+    ];
+
+    // Check if the origin matches any of our allowed patterns
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return allowedOrigin === origin;
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`Origin: ${origin} not allowed by CORS`);
+      callback(new Error('Not allowed by CORS'));
+    }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
+});
+
+// Configure session middleware
+export const sessionMiddleware = session({
+  secret: process.env.SESSION_SECRET || 'landhacker-session-secret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax'
+  }
 });
 
 // CSRF protection middleware
@@ -65,54 +109,6 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
 
 // Request logging middleware
 export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
-  console.log(`${new Date().toISOString()} [${req.method}] ${req.originalUrl}`);
-  next();
-};
-
-// CSP Headers
-export const cspMiddleware = expressCspHeader({
-  directives: {
-    'default-src': ["'self'"],
-    'script-src': ["'self'", "'unsafe-inline'", "https://apis.google.com"],
-    'style-src': ["'self'", "'unsafe-inline'"],
-    'img-src': ["'self'", "data:", "https://*.googleusercontent.com"],
-    'connect-src': ["'self'", "https://*.googleapis.com", "https://firebaseinstallations.googleapis.com"],
-    'frame-src': ["'self'", "https://accounts.google.com"],
-  }
-});
-
-import rateLimit from 'express-rate-limit';
-import { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-
-// Create a rate limiter for general API requests
-export const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  message: { message: 'Too many requests, please try again later.' },
-});
-
-// Create a more strict rate limiter for authentication
-export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 login attempts per windowMs
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many login attempts, please try again later.' },
-});
-
-// Error handling middleware
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error in request:', err);
-  const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
-  res.status(status).json({ message });
-};
-
-// Request logging middleware
-export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
@@ -142,38 +138,14 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
   next();
 };
 
-// Update CORS configuration to handle both webview and external access
-export const corsMiddleware = cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      /\.replit\.dev$/,  // Allow all replit.dev subdomains
-      /\.replit\.app$/   // Allow all replit.app subdomains
-    ];
-
-    // Check if the origin matches any of our allowed patterns
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin instanceof RegExp) {
-        return allowedOrigin.test(origin);
-      }
-      return allowedOrigin === origin;
-    });
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.warn(`Origin: ${origin} not allowed by CORS`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+// CSP Headers
+export const cspMiddleware = expressCspHeader({
+  directives: {
+    'default-src': ["'self'"],
+    'script-src': ["'self'", "'unsafe-inline'", "https://apis.google.com"],
+    'style-src': ["'self'", "'unsafe-inline'"],
+    'img-src': ["'self'", "data:", "https://*.googleusercontent.com"],
+    'connect-src': ["'self'", "https://*.googleapis.com", "https://firebaseinstallations.googleapis.com"],
+    'frame-src': ["'self'", "https://accounts.google.com"],
+  }
 });

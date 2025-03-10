@@ -29,7 +29,17 @@ async function initializeServer() {
 
     // Import middleware
     console.log('Importing and configuring middleware...');
-    const { apiLimiter, authLimiter, errorHandler, requestLogger, corsMiddleware } = await import('./middleware');
+    const { 
+      apiLimiter, 
+      authLimiter, 
+      errorHandler, 
+      requestLogger, 
+      corsMiddleware, 
+      sessionMiddleware,
+      generateCsrfToken,
+      cspMiddleware,
+      csrfProtection
+    } = await import('./middleware');
 
     // Setup middleware
     console.log('Setting up middleware...');
@@ -38,16 +48,7 @@ async function initializeServer() {
     app.use(corsMiddleware);
     
     // Add session support
-    app.use(express.session({
-      secret: process.env.SESSION_SECRET || 'landhacker-session-secret',
-      resave: false,
-      saveUninitialized: true,
-      cookie: { 
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        sameSite: 'lax'
-      }
-    }));
+    app.use(sessionMiddleware);
     
     // Generate CSRF token for all requests
     app.use(generateCsrfToken);
