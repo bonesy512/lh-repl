@@ -19,24 +19,22 @@ import Settings from "@/pages/Settings";
 
 function Router() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <main className="flex-1">
-        <Switch>
-          <Route path="/" component={Home} />
-          <Route path="/features" component={Features} />
-          <Route path="/pricing" component={Pricing} />
-          <Route path="/login" component={Login} />
-          <Route path="/auth" component={Auth} />
-          <Route path="/beta" component={BetaLanding} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/app" component={AppPage} />
-          <Route path="/team-management" component={TeamManagement} />
-          <Route path="/purchase-tokens" component={PurchaseTokens} />
-          <Route path="/membership" component={Membership} />
-          <Route path="/settings" component={Settings} />
-          <Route component={NotFound} />
-        </Switch>
-      </main>
+    <div className="min-h-screen">
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/features" component={Features} />
+        <Route path="/pricing" component={Pricing} />
+        <Route path="/login" component={Login} />
+        <Route path="/auth" component={Auth} />
+        <Route path="/beta" component={BetaLanding} />
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/app" component={AppPage} />
+        <Route path="/team-management" component={TeamManagement} />
+        <Route path="/purchase-tokens" component={PurchaseTokens} />
+        <Route path="/membership" component={Membership} />
+        <Route path="/settings" component={Settings} />
+        <Route component={NotFound} />
+      </Switch>
     </div>
   );
 }
