@@ -15,9 +15,15 @@ import { useAuth } from "@/hooks/use-auth";
 
 export function Navigation() {
   const [location, navigate] = useLocation();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isWebView } = useAuth();
 
-  console.log("Navigation render state:", { user, isLoading, location });
+  console.log("Navigation render state:", { 
+    user, 
+    isLoading, 
+    location, 
+    isWebView,
+    currentUrl: window.location.href 
+  });
 
   const handleSignOut = async () => {
     try {
@@ -26,6 +32,18 @@ export function Navigation() {
       navigate("/auth");
     } catch (error) {
       console.error("Sign out error:", error);
+    }
+  };
+
+  const handleAuthClick = () => {
+    console.log("Auth button clicked:", { isWebView });
+    if (isWebView) {
+      const newTabUrl = window.location.origin + "/auth";
+      console.log("Opening auth in new tab:", newTabUrl);
+      window.open(newTabUrl, "_blank");
+    } else {
+      console.log("Navigating to auth page");
+      navigate("/auth");
     }
   };
 
@@ -97,17 +115,9 @@ export function Navigation() {
                     <Users className="mr-2 h-4 w-4" />
                     <span>Dashboard</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/team")}>
-                    <Users className="mr-2 h-4 w-4" />
-                    <span>Team Members</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/subscription")}>
                     <CreditCard className="mr-2 h-4 w-4" />
                     <span>Subscription Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/purchase-tokens")}>
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    <span>Purchase Tokens</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
@@ -125,7 +135,7 @@ export function Navigation() {
             <Button 
               variant="ghost" 
               className="relative h-8 w-8 rounded-full"
-              onClick={() => navigate("/auth")}
+              onClick={handleAuthClick}
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback>?</AvatarFallback>

@@ -14,41 +14,49 @@ console.log('Starting server initialization...');
 
 const execAsync = promisify(exec);
 
-const app = express();
-
-// Parse JSON for all routes except the Stripe webhook
-// Import middleware
-import { apiLimiter, authLimiter, errorHandler, requestLogger } from './middleware';
-
-// Parse JSON for all routes except the Stripe webhook
-app.use((req, res, next) => {
-  if (req.originalUrl === '/api/webhook') {
-    next();
-  } else {
-    express.json()(req, res, next);
-  }
-});
-
-app.use(express.urlencoded({ extended: false }));
-
-// Add raw body parser for Stripe webhook
-app.post('/api/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
-  req.body = req.body.toString();
-  next();
-});
-
-// Apply request logging middleware
-app.use(requestLogger);
-
-// Apply rate limiters
-app.use('/api/auth', authLimiter);
-app.use('/api', apiLimiter);
-
-(async () => {
+async function initializeServer() {
   try {
+    console.log('Creating Express application...');
+    const app = express();
+
+    // Import middleware
+    console.log('Importing and configuring middleware...');
+    const { apiLimiter, authLimiter, errorHandler, requestLogger, corsMiddleware } = await import('./middleware');
+
+    // Setup middleware
+    console.log('Setting up middleware...');
+
+    // Apply CORS middleware first
+    app.use(corsMiddleware);
+
+    // Parse JSON for all routes except the Stripe webhook
+    app.use((req, res, next) => {
+      if (req.originalUrl === '/api/webhook') {
+        next();
+      } else {
+        express.json()(req, res, next);
+      }
+    });
+
+    app.use(express.urlencoded({ extended: false }));
+
+    // Add raw body parser for Stripe webhook
+    app.post('/api/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
+      req.body = req.body.toString();
+      next();
+    });
+
+    // Apply request logging middleware
+    app.use(requestLogger);
+
+    // Apply rate limiters
+    app.use('/api/auth', authLimiter);
+    app.use('/api', apiLimiter);
+
     console.log('Registering routes...');
     const server = await registerRoutes(app);
 
+    // Error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       console.error('Error in request:', err);
       const status = err.status || err.statusCode || 500;
@@ -56,12 +64,11 @@ app.use('/api', apiLimiter);
       res.status(status).json({ message });
     });
 
-    // Skip Vite middleware in Replit environment
+    // Handle static file serving based on environment
     if (process.env.REPL_ID) {
       console.log('Running in Replit environment...');
-      console.log('Building client...');
       try {
-        // Ensure the public directory exists
+        console.log('Building client...');
         const publicDir = path.resolve(__dirname, 'public');
         const distDir = path.resolve(__dirname, '..', 'dist', 'public');
 
@@ -69,34 +76,29 @@ app.use('/api', apiLimiter);
           fs.mkdirSync(publicDir, { recursive: true });
         }
 
-        // Change to root directory before running build
         const rootDir = path.resolve(__dirname, '..');
-        console.log('Root directory:', rootDir);
         process.chdir(rootDir);
 
-        // Build the client
         await execAsync('npm run build');
         console.log('Client built successfully');
 
-        // Copy dist to public
         if (fs.existsSync(distDir)) {
           await execAsync(`cp -r ${distDir}/* ${publicDir}/`);
           console.log('Static files copied successfully');
         } else {
-          console.log(`Checking alternative build directory locations...`);
+          console.log('Checking alternative build directory...');
           const altDistDir = path.resolve(__dirname, '..', 'dist');
           if (fs.existsSync(altDistDir)) {
             await execAsync(`cp -r ${altDistDir}/* ${publicDir}/`);
-            console.log('Static files copied from alternate location successfully');
+            console.log('Static files copied from alternate location');
           } else {
-            throw new Error(`Build directory not found: ${distDir} or ${altDistDir}`);
+            throw new Error('Build directory not found');
           }
         }
 
         serveStatic(app);
       } catch (buildError) {
-        console.error('Failed to build client:', buildError);
-        console.error('Error details:', buildError instanceof Error ? buildError.stack : buildError);
+        console.error('Build process failed:', buildError);
         throw buildError;
       }
     } else if (app.get("env") === "development") {
@@ -107,6 +109,16 @@ app.use('/api', apiLimiter);
       serveStatic(app);
     }
 
+    return server;
+  } catch (error) {
+    console.error('Server initialization failed:', error);
+    throw error;
+  }
+}
+
+// Start the server
+initializeServer()
+  .then(server => {
     const port = 5000;
     server.listen({
       port,
@@ -115,9 +127,9 @@ app.use('/api', apiLimiter);
     }, () => {
       log(`Server started successfully, listening on port ${port}`);
     });
-  } catch (error) {
+  })
+  .catch(error => {
     console.error('Failed to start server:', error);
     console.error('Error details:', error instanceof Error ? error.stack : error);
     process.exit(1);
-  }
-})();
+  });

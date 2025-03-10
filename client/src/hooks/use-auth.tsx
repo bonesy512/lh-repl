@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import {
   useQuery,
   useMutation,
@@ -7,31 +7,39 @@ import {
 import { insertUserSchema, type User } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { signInWithGoogle } from "@/lib/firebase";
 
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<User, Error, LoginData>;
+  loginMutation: UseMutationResult<User, Error, void>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<User, Error, RegisterData>;
-};
-
-type LoginData = {
-  username: string;
-  password: string;
-};
-
-type RegisterData = {
-  username: string;
-  email: string;
-  password: string;
+  isWebView: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// Helper to detect if we're in a webview
+const isWebView = () => {
+  const isEmbedded = window.parent !== window;
+  console.log("Webview detection:", { isEmbedded, userAgent: window.navigator.userAgent });
+  return isEmbedded;
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  const [isInWebView] = useState(isWebView());
+
+  // Log the environment on mount
+  useEffect(() => {
+    console.log("Auth environment:", {
+      isWebView: isInWebView,
+      href: window.location.href,
+      origin: window.location.origin,
+      parent: window.parent !== window
+    });
+  }, [isInWebView]);
 
   const {
     data: user,
@@ -64,63 +72,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginData) => {
-      console.log("Attempting login...");
-      const res = await apiRequest("POST", "/api/auth/login", credentials);
-      const data = await res.json();
-      console.log("Login response:", data);
-      return data;
+    mutationFn: async () => {
+      console.log("Login mutation started:", { isInWebView });
+
+      if (isInWebView) {
+        console.log("Detected webview, showing open in new tab message");
+        toast({
+          title: "Authentication Notice",
+          description: (
+            <div>
+              Please{" "}
+              <a
+                href={window.location.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-primary"
+              >
+                open in a new tab
+              </a>{" "}
+              to login.
+            </div>
+          ),
+        });
+        throw new Error("Please open in a new tab to login");
+      }
+
+      console.log("Proceeding with Google sign in");
+      const googleUser = await signInWithGoogle();
+      console.log("Google sign in completed:", { uid: googleUser.uid });
+
+      const res = await apiRequest("POST", "/api/auth/login", {
+        uid: googleUser.uid,
+        email: googleUser.email,
+        displayName: googleUser.displayName,
+      });
+      return await res.json();
     },
     onSuccess: (user: User) => {
-      console.log("Login successful, updating cache");
+      console.log("Login successful:", user);
       queryClient.setQueryData(["/api/user"], user);
       toast({
-        title: "Welcome back!",
+        title: "Welcome!",
         description: "You have been successfully logged in.",
       });
     },
     onError: (error: Error) => {
       console.error("Login mutation error:", error);
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const registerMutation = useMutation({
-    mutationFn: async (data: RegisterData) => {
-      console.log("Attempting registration...");
-      const res = await apiRequest("POST", "/api/auth/register", data);
-      const userData = await res.json();
-      console.log("Registration response:", userData);
-      return userData;
-    },
-    onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Welcome to LandHacker!",
-        description: "Your account has been created successfully.",
-      });
-    },
-    onError: (error: Error) => {
-      console.error("Registration mutation error:", error);
-      toast({
-        title: "Registration failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (!error.message.includes("Please open in a new tab")) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     },
   });
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      console.log("Attempting logout...");
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      console.log("Logout successful, clearing cache");
       queryClient.setQueryData(["/api/user"], null);
       queryClient.clear();
       toast({
@@ -138,8 +150,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  console.log("AuthProvider state:", { user, isLoading, error });
-
   return (
     <AuthContext.Provider
       value={{
@@ -148,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: error || null,
         loginMutation,
         logoutMutation,
-        registerMutation,
+        isWebView: isInWebView,
       }}
     >
       {children}
@@ -157,43 +167,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const { toast } = useToast();
+  const context = useContext(AuthContext);
 
-  const {
-    data: user,
-    error,
-    isLoading,
-  } = useQuery<User | null>({
-    queryKey: ["/api/user"],
-    queryFn: async () => {
-      console.log("Fetching user data...");
-      try {
-        const response = await fetch("/api/user", {
-          credentials: "include",
-        });
-        if (response.status === 401) {
-          console.log("User not authenticated");
-          return null;
-        }
-        if (!response.ok) {
-          throw new Error(`Failed to fetch user: ${response.statusText}`);
-        }
-        const data = await response.json();
-        console.log("User data response:", data);
-        return data;
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        return null;
-      }
-    },
-    retry: false,
-  });
+  if (context === undefined)
+    throw new Error("useAuth must be used within a AuthProvider");
 
-  console.log("useAuth hook state:", { user, isLoading, error });
-
-  return {
-    user: user || null,
-    isLoading,
-    error: error || null,
-  };
+  return context;
 }
