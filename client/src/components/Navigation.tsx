@@ -96,46 +96,28 @@ export function Navigation() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => {
-                    console.log("Navigating to dashboard");
-                    navigate("/dashboard");
-                  }}>
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     <span>Dashboard</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    console.log("Navigating to app");
-                    navigate("/app");
-                  }}>
+                  <DropdownMenuItem onClick={() => navigate("/app")}>
                     <Map className="mr-2 h-4 w-4" />
                     <span>App</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    console.log("Navigating to team management");
-                    navigate("/team-management");
-                  }}>
+                  <DropdownMenuItem onClick={() => navigate("/team-management")}>
                     <Users2 className="mr-2 h-4 w-4" />
                     <span>Team Management</span>
                     <span className="ml-auto text-xs text-muted-foreground">$10/seat</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    console.log("Navigating to purchase tokens");
-                    navigate("/purchase-tokens");
-                  }}>
+                  <DropdownMenuItem onClick={() => navigate("/purchase-tokens")}>
                     <CreditCard className="mr-2 h-4 w-4" />
                     <span>Purchase Tokens</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    console.log("Navigating to membership");
-                    navigate("/membership");
-                  }}>
+                  <DropdownMenuItem onClick={() => navigate("/membership")}>
                     <Wallet className="mr-2 h-4 w-4" />
                     <span>Membership</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    console.log("Navigating to settings");
-                    navigate("/settings");
-                  }}>
+                  <DropdownMenuItem onClick={() => navigate("/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </DropdownMenuItem>
