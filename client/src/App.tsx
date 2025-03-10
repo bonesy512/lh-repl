@@ -13,6 +13,7 @@ import Dashboard from "@/pages/Dashboard";
 import App from "@/pages/App";
 import TeamManagement from "@/pages/TeamManagement";
 import Login from "@/pages/Login";
+import Auth from "@/pages/Auth";
 import BetaLanding from "@/pages/BetaLanding";
 import NotFound from "@/pages/not-found";
 import PurchaseTokens from "@/pages/PurchaseTokens";
@@ -30,6 +31,7 @@ function Router() {
           <Route path="/features" component={Features} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/login" component={Login} />
+          <Route path="/auth" component={Auth} />
           <Route path="/beta" component={BetaLanding} />
           <ProtectedRoute path="/dashboard" component={Dashboard} />
           <ProtectedRoute path="/app" component={App} />

@@ -18,12 +18,31 @@ import {
   CreditCard,
   Wallet
 } from "lucide-react";
-import { signOut } from "@/lib/firebase";
+import { signOut, signInWithGoogle } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
+import { useEffect, useState } from "react";
 
 export function Navigation() {
   const [location, navigate] = useLocation();
   const { user, isLoading } = useAuth();
+  const [isWebView, setIsWebView] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState("");
+
+  useEffect(() => {
+    // Check if we're in a webview context (iframe)
+    const isEmbedded = window.parent !== window;
+    const userAgent = navigator.userAgent;
+    setIsWebView(isEmbedded);
+    setCurrentUrl(window.location.href);
+    
+    console.log("Navigation render state:", {
+      user,
+      isLoading,
+      location,
+      isWebView: isEmbedded,
+      currentUrl: window.location.href
+    });
+  }, [user, isLoading, location]);
 
   const handleSignOut = async () => {
     try {
@@ -31,6 +50,17 @@ export function Navigation() {
       navigate("/login");
     } catch (error) {
       console.error("Sign out error:", error);
+    }
+  };
+
+  const handleSignIn = async () => {
+    try {
+      console.log("Auth button clicked:", { isWebView });
+      
+      // Use the improved signInWithGoogle that handles webview context
+      await signInWithGoogle();
+    } catch (error) {
+      console.error("Sign in error:", error);
     }
   };
 
@@ -132,7 +162,7 @@ export function Navigation() {
             <Button 
               variant="ghost" 
               className="relative h-8 w-8 rounded-full"
-              onClick={() => navigate("/login")}
+              onClick={handleSignIn}
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback>?</AvatarFallback>
