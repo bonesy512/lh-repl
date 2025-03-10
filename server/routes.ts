@@ -6,6 +6,8 @@ import { z } from "zod";
 import { insertUserSchema, insertParcelSchema, insertAnalysisSchema, insertCampaignSchema } from "@shared/schema";
 import { TOKEN_PACKAGES } from "../client/src/lib/stripe";
 import admin from "firebase-admin";
+import { getStorage } from "firebase-admin/storage";
+
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -270,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add import route after existing routes
+  // Update the import route to handle directory paths
   app.post("/api/import-gis-data", verifyFirebaseToken, async (req, res) => {
     try {
       const { dataType, url, region } = z.object({
@@ -298,7 +300,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.importGISDataFromURL(dataType, url, region);
       res.json({ 
         message: "Import started successfully",
-        note: "Upload your GIS files to Firebase Storage and use the download URL in this endpoint"
+        note: "Upload your GIS files to Firebase Storage and use the download URL in this endpoint",
+        example: {
+          downloadUrl: "https://firebasestorage.googleapis.com/v0/b/landhacker-9a7c1.appspot.com/o/Texas%2FAddresses%2Fyour-file.gdbtable",
+          usage: "Get the download URL for each .gdbtable file from Firebase Console"
+        }
       });
     } catch (error: any) {
       console.error('Error starting GIS data import:', error);
