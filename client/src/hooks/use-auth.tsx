@@ -22,7 +22,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
 
-  // Handle auth state changes
   useEffect(() => {
     let mounted = true;
 
