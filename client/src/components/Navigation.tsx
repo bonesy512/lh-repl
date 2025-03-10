@@ -8,34 +8,34 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CreditCard, Settings, Users, LogOut } from "lucide-react";
 import { signOut } from "@/lib/firebase";
-import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 
 export function Navigation() {
   const [location, navigate] = useLocation();
-  const { data: user } = useQuery({
-    queryKey: ["/api/user"],
-  });
+  const { user, isLoading } = useAuth();
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
+    try {
+      await signOut();
+      navigate("/login");
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
   };
 
-  // Get user initials for avatar fallback
   const userInitials = user?.username
     ?.split(" ")
     .map((n) => n[0])
     .join("")
-    .toUpperCase() || "U";
+    .toUpperCase() || "?";
 
   return (
     <header className="border-b">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center space-x-8">
-          {/* Logo */}
           <div 
             className="font-bold text-xl cursor-pointer" 
             onClick={() => navigate("/")}
@@ -43,8 +43,7 @@ export function Navigation() {
             LandHacker
           </div>
 
-          {/* Main Navigation - only show when not logged in */}
-          {!user && (
+          {!user && !isLoading && (
             <nav className="hidden md:flex items-center space-x-4">
               <Button
                 variant={location === "/features" ? "default" : "ghost"}
@@ -62,58 +61,50 @@ export function Navigation() {
           )}
         </div>
 
-        {/* Credits and User Menu */}
         <div className="flex items-center gap-4">
-          {user && (
-            <div className="text-sm text-muted-foreground">
-              Credits: {user.credits || 0}
-            </div>
-          )}
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatarUrl} alt={user.username} />
-                    <AvatarFallback>{userInitials}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.username}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                  <Users className="mr-2 h-4 w-4" />
-                  <span>Dashboard</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/team")}>
-                  <Users className="mr-2 h-4 w-4" />
-                  <span>Team Members</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/subscription")}>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  <span>Subscription Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/purchase-tokens")}>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  <span>Purchase Tokens</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/settings")}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {isLoading ? (
+            <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+          ) : user ? (
+            <>
+              <div className="text-sm text-muted-foreground">
+                Credits: {user.credits || 0}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>{userInitials}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.username}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    <Users className="mr-2 h-4 w-4" />
+                    <span>Dashboard</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/subscription")}>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    <span>Subscription Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/settings")}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           ) : (
             <Button 
               variant="ghost" 
@@ -121,7 +112,7 @@ export function Navigation() {
               onClick={() => navigate("/login")}
             >
               <Avatar className="h-8 w-8">
-                <AvatarFallback>U</AvatarFallback>
+                <AvatarFallback>?</AvatarFallback>
               </Avatar>
             </Button>
           )}
