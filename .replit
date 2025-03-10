@@ -7,12 +7,8 @@ channel = "stable-24_05"
 
 [deployment]
 deploymentTarget = "cloudrun"
-build = ["sh", "-c", "npm run build"]
-run = ["sh", "-c", "NODE_ENV=production node dist/index.js"]
-
-[[ports]]
-localPort = 3000
-externalPort = 3000
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
 
 [[ports]]
 localPort = 5000
@@ -33,7 +29,6 @@ args = "Start application"
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
-mode = "sequential"
 
 [workflows.workflow.metadata]
 agentRequireRestartOnSave = false

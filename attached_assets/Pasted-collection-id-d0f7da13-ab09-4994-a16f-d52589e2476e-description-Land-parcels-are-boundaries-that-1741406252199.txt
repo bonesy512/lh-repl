@@ -1,0 +1,58 @@
+collection id
+d0f7da13-ab09-4994-a16f-d52589e2476e
+
+description
+Land parcels are boundaries that have associated information such as property owner, land use, value, and location attributes. In Texas, this property information is recorded and maintained at the county level by the local appraisal districts. Generally, it can be used by public entities to make informed decisions on community planning, development, or emergency preparation and response.
+
+Data are provided by county appraisal districts or their service providers and then translated in the TxGIO common schema. Data collection and transformation was completed by BIS Consultants and delivered to TxGIO. Users should note that the data available in the StratMap Land Parcels dataset is presented ‘AS-IS’ based on the delivery by the local appraisal districts or their vendors. No values from the original data have been changed or removed. Additionally, StratMap Land Parcels are intended to be used as basemap and cartographic data and are not for detailed analysis.
+
+We encourage the user to reach out to the specific county appraisal district with questions regarding the attributes represented in this data.
+
+Each land parcel dataset consists of a zip file including:
+File geodatabase
+Shapefile
+Metadata
+
+Click here for more information about TxGIO's Land Parcel Program
+
+StratMap 2024 Land Parcels Interactive Map
+acquisition date
+2024-02-01
+source name
+Various Appraisal Districts
+spatial reference
+4326
+file type
+GDB,SHP
+category
+Basemap
+wms link
+This dataset is available as an online mapping service. An OGC WMS
+service and an ArcGIS service are available. To connect to the WMS
+service in your software, please copy the unique url provided in the
+box below. To access the TxGIO ArcGIS Server, please use the
+following url in your ESRI software and select from the list of
+available services.
+
+For ESRI users accessing our RESTful Services hosted on our ArcGIS
+server (feature.geographic.texas.gov or
+imagery.geographic.texas.gov), you may access all WMS services
+available by downloading our feature and imagery connection files and selecting from the list of availabile services within your ESRI
+desktop software.
+
+https://feature.geographic.texas.gov/arcgis/services/Parcels/stratmap24_land_parcels_48/MapServer/WMSServer
+content_copy Copy Link
+Supplemental Downloads
+supplemental report url
+downloadDownload
+s3 url
+https://tnris-data-warehouse.s3.us-east-1.amazonaws.com/index.html?prefix=LCD/collection/stratmap-2024-land-parcels
+content_copy Copy Link
+s3 uri
+s3://tnris-data-warehouse/LCD/collection/stratmap-2024-land-parcels
+content_copy Copy Link
+License Info
+https://creativecommons.org/publicdomain/zero/1.0/
+content_copy Copy Link
+Collection Citation
+Various Appraisal Districts (Various Appraisal Districts). Land Parcels, 2024-02-01. Web. 2025-03-07.

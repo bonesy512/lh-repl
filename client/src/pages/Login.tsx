@@ -1,69 +1,60 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { signInWithGoogle } from "@/lib/firebase";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Login() {
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { user, loginMutation } = useAuth();
+  const { user } = useAuth();
 
   // Redirect if already logged in
-  useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    }
-  }, [user, navigate]);
+  if (user) {
+    navigate("/dashboard");
+    return null;
+  }
 
   async function handleLogin() {
-    if (loading) return;
-
     try {
       setLoading(true);
-      setError(null);
+      console.log("Starting Google sign-in process...");
+      const user = await signInWithGoogle();
+      console.log("Google sign-in successful:", user);
 
-      await loginMutation.mutateAsync();
+      // Create or verify user in our backend
+      console.log("Verifying user with backend...");
+      await apiRequest("POST", "/api/auth/login", {
+        firebaseUid: user.uid,
+        email: user.email,
+        username: user.displayName,
+      });
+      console.log("Backend verification successful");
 
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Login failed:", error);
-      setError(error.message || "An error occurred during login");
 
-      if (error.code === "auth/popup-blocked") {
+      if (error.code === "auth/unauthorized-domain") {
         toast({
           title: "Login Error",
-          description: "Please enable popups for this site to use Google sign-in.",
-          variant: "destructive",
-        });
-      } else if (error.code === "auth/unauthorized-domain") {
-        toast({
-          title: "Login Error",
-          description: `This domain (${window.location.hostname}) is not authorized for sign-in. Please add it to Firebase Console's Authorized Domains list.`,
+          description: `This domain is not authorized for login. Please add "${window.location.hostname}" to Firebase authorized domains.`,
           variant: "destructive",
         });
       } else {
         toast({
           title: "Login Failed",
-          description: error.message,
+          description: "An error occurred during login. Please try again.",
           variant: "destructive",
         });
       }
     } finally {
       setLoading(false);
     }
-  }
-
-  // If already logged in, show loading state while redirecting
-  if (user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
   }
 
   return (
@@ -104,13 +95,6 @@ export default function Login() {
               Sign in to access AI-powered land investment tools
             </p>
           </div>
-
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
           <Button
             className="w-full"
             onClick={handleLogin}
@@ -122,14 +106,14 @@ export default function Login() {
           <p className="px-8 text-center text-sm text-muted-foreground">
             By clicking continue, you agree to our{" "}
             <a
-              href="/terms"
+              href="#"
               className="underline underline-offset-4 hover:text-primary"
             >
               Terms of Service
             </a>{" "}
             and{" "}
             <a
-              href="/privacy"
+              href="#"
               className="underline underline-offset-4 hover:text-primary"
             >
               Privacy Policy

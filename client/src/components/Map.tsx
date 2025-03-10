@@ -14,7 +14,6 @@ import { Loader2 } from 'lucide-react';
 import type { Parcel } from '@shared/schema';
 import { useAppStore } from "@/utils/store";
 import { LayerControl } from "./map/LayerControl";
-import { GeolocateControl, NavigationControl, Source, Layer } from "react-map-gl";
 
 interface PropertyMapProps {
   parcels?: Parcel[];
@@ -22,64 +21,6 @@ interface PropertyMapProps {
   loading?: boolean;
   onViewMore?: () => void;
 }
-
-interface MapSourceLayer {
-  id: string;
-  type: "fill" | "line" | "symbol" | "circle" | "heatmap";
-  paint: any;
-  layout?: any;
-  filter?: any[];
-}
-
-const LAYER_STYLES: Record<string, MapSourceLayer[]> = {
-  "parcel-boundaries": [
-    {
-      id: "parcel-lines",
-      type: "line",
-      paint: {
-        "line-color": "#4A90E2",
-        "line-width": 2,
-        "line-opacity": 0.8
-      }
-    }
-  ],
-  "building-footprints": [
-    {
-      id: "building-fills",
-      type: "fill",
-      paint: {
-        "fill-color": "#FF9800",
-        "fill-opacity": 0.2
-      }
-    },
-    {
-      id: "building-lines",
-      type: "line",
-      paint: {
-        "line-color": "#FF9800",
-        "line-width": 1
-      }
-    }
-  ],
-  "zoning": [
-    {
-      id: "zoning-fills",
-      type: "fill",
-      paint: {
-        "fill-color": [
-          "match",
-          ["get", "zone_type"],
-          "residential", "#A5D6A7",
-          "commercial", "#90CAF9",
-          "industrial", "#FFCC80",
-          "agricultural", "#C5E1A5",
-          "#E0E0E0" // default color
-        ],
-        "fill-opacity": 0.3
-      }
-    }
-  ]
-};
 
 export default function PropertyMap({
   parcels = [],
@@ -91,12 +32,6 @@ export default function PropertyMap({
     latitude: 39.8283,
     longitude: -98.5795,
     zoom: 3
-  });
-
-  console.log("PropertyMap render:", {
-    parcelCount: parcels?.length || 0,
-    loading,
-    viewPort: viewport
   });
 
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
@@ -115,8 +50,7 @@ export default function PropertyMap({
     setSelectedProperty,
     shouldCenterMap,
     setShouldCenterMap,
-    setIsLoadingProperty,
-    activeLayers
+    setIsLoadingProperty
   } = useAppStore();
 
   // Center map when requested (e.g. after search)
@@ -147,53 +81,68 @@ export default function PropertyMap({
     );
   }
 
-  // Safeguard against no parcels array
-  if (!Array.isArray(parcels)) {
-    console.error("Invalid parcels data:", parcels);
-    return (
-      <div className="w-full h-[600px] flex items-center justify-center bg-muted">
-        <p>No parcel data available</p>
-      </div>
-    );
-  }
-
-  const renderMapLayers = () => {
-    return activeLayers.map(layerId => {
-      if (LAYER_STYLES[layerId]) {
-        return (
-          <Source
-            key={layerId}
-            id={`source-${layerId}`}
-            type="geojson"
-            data={`/api/geojson/${layerId}`}
-          >
-            {LAYER_STYLES[layerId].map(layer => (
-              <Layer key={layer.id} {...layer} />
-            ))}
-          </Source>
-        );
-      }
-      return null;
-    });
-  };
+  // Assuming activeLayers is defined elsewhere in the component
+  const activeLayers = ["terrain", "satellite", "parcel-boundaries"]; //Example, replace with actual logic
 
   return (
     <div className="w-full h-[600px] relative">
-      {/* Search Bar - Updated with better mobile responsiveness */}
-      <div className="absolute top-0 left-0 right-0 p-4 md:top-4 md:left-4 md:right-auto md:p-0 z-[3] md:w-[400px]">
+      {/* Search Bar */}
+      <div className="absolute top-4 left-4 z-[3] w-[400px] max-w-[calc(100vw-2rem)]">
         <SearchBar mapRef={mapRef} />
       </div>
 
-      {/* Map Controls */}
+      {/* Map Layers */}
+      {activeLayers.includes("terrain") && (
+        <Source
+          id="terrain"
+          type="raster-dem"
+          url="mapbox://mapbox.mapbox-terrain-dem-v1"
+        >
+          <Layer
+            id="terrain-data"
+            type="hillshade"
+            paint={{
+              "hillshade-exaggeration": 0.6
+            }}
+          />
+        </Source>
+      )}
+
+      {activeLayers.includes("satellite") && (
+        <Source
+          id="satellite"
+          type="raster"
+          url="mapbox://mapbox.satellite"
+        >
+          <Layer
+            id="satellite-layer"
+            type="raster"
+          />
+        </Source>
+      )}
+
+      {activeLayers.includes("parcel-boundaries") && (
+        <Source
+          id="parcel-boundaries"
+          type="vector"
+          url="mapbox://mapbox.boundaries-adm2"
+        >
+          <Layer
+            id="parcel-lines"
+            type="line"
+            source-layer="boundaries_admin_2"
+            paint={{
+              "line-color": "#FF0000",
+              "line-width": 1
+            }}
+          />
+        </Source>
+      )}
+
+
+      {/* Measurement Controls */}
       <div className="absolute bottom-[175px] left-2.5 z-[1] flex flex-col gap-2">
         <LayerControl />
-        <NavigationControl />
-        <GeolocateControl
-          positionOptions={{ enableHighAccuracy: true }}
-          trackUserLocation
-          showUserLocation
-          showAccuracyCircle
-        />
         <MeasurementControls />
       </div>
 
@@ -203,85 +152,90 @@ export default function PropertyMap({
         </div>
       )}
 
-      {/* Property Card - Updated to match search bar responsive styling */}
+      {/* Property Card */}
       {propertyCardVisible && selectedProperty && (
-        <div className="absolute top-0 right-0 left-0 p-4 md:top-4 md:right-4 md:left-auto md:p-0 z-[3] md:w-[400px]">
-          <PropertyCard parcel={selectedParcel} onViewMore={onViewMore} />
+        <div className="absolute top-4 right-4 z-[3] w-[400px] max-w-[calc(100vw-2rem)]">
+          <PropertyCard onViewMore={onViewMore} />
         </div>
       )}
 
       <ReactMapGL
         ref={mapRef}
         {...viewport}
-        onMove={evt => setViewport(evt.viewState)}
+        onMove={evt => {
+          setViewport(evt.viewState);
+          setViewportCenter([evt.viewState.longitude, evt.viewState.latitude]);
+        }}
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
         mapStyle="mapbox://styles/mapbox/streets-v11"
         style={{ width: '100%', height: '100%' }}
         onClick={(evt) => {
+          // If in measurement mode, add point
           if (measurementMode !== 'none') {
             addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
           }
         }}
       >
-        {renderMapLayers()}
-        {parcels.map((parcel) => {
-          // Add type checking for required parcel properties
-          if (!parcel?.latitude || !parcel?.longitude) {
-            console.error("Invalid parcel data:", parcel);
-            return null;
-          }
+        {/* Measurement Layer */}
+        <MeasurementLayer />
 
-          return (
-            <Marker
-              key={parcel.id}
-              latitude={Number(parcel.latitude)}
-              longitude={Number(parcel.longitude)}
-              onClick={(evt) => {
-                evt.preventDefault(); // Prevent event bubbling
-                if (measurementMode !== 'none') {
-                  if (evt.lngLat) {
-                    addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
-                  }
-                } else {
-                  setSelectedParcel(parcel);
-                  setSelectedProperty({
-                    propertyId: parcel.id,
-                    address: {
-                      streetAddress: parcel.address,
-                      city: parcel.city || '',
-                      state: parcel.state || '',
-                      zipcode: parcel.zipcode || ''
-                    },
-                    ownerName: parcel.ownerName || '',
-                    latitude: Number(parcel.latitude),
-                    longitude: Number(parcel.longitude)
-                  });
-                  setPropertyCardVisible(true);
-                  if (onParcelSelect) {
-                    onParcelSelect(parcel);
-                  }
+        {/* Map Controls */}
+        <NavigationControl position="bottom-left" />
+        <GeolocateControl
+          position="bottom-left"
+          positionOptions={{ enableHighAccuracy: true }}
+          trackUserLocation={true}
+        />
+
+        {/* Property Markers */}
+        {parcels.map((parcel) => (
+          <Marker
+            key={parcel.id}
+            latitude={Number(parcel.latitude)}
+            longitude={Number(parcel.longitude)}
+            onClick={evt => {
+              if (measurementMode !== 'none') {
+                addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
+              } else {
+                setSelectedParcel(parcel);
+                setSelectedProperty({
+                  propertyId: parcel.id,
+                  address: {
+                    streetAddress: parcel.address,
+                    city: parcel.city,
+                    state: parcel.state,
+                    zipcode: parcel.zipcode
+                  },
+                  ownerName: parcel.ownerName,
+                  latitude: Number(parcel.latitude),
+                  longitude: Number(parcel.longitude)
+                });
+                setPropertyCardVisible(true);
+                if (onParcelSelect) {
+                  onParcelSelect(parcel);
                 }
-              }}
-            >
-              <div className="text-primary cursor-pointer">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-              </div>
-            </Marker>
-          );
-        })}
+              }
+            }}
+          >
+            <div className="text-primary cursor-pointer">
+              <svg
+                viewBox="0 0 24 24"
+                width="24"
+                height="24"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
+          </Marker>
+        ))}
 
+        {/* Selected Property Popup */}
         {selectedParcel && (
           <Popup
             latitude={Number(selectedParcel.latitude)}

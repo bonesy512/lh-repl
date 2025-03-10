@@ -6,25 +6,23 @@ import { z } from "zod";
 import { insertUserSchema, insertParcelSchema, insertAnalysisSchema, insertCampaignSchema } from "@shared/schema";
 import { TOKEN_PACKAGES } from "../client/src/lib/stripe";
 import admin from "firebase-admin";
-import { generateApiDocsHtml } from './api-docs';
-import { config } from "./config";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 // Initialize Firebase Admin
 console.log('Initializing Firebase Admin...');
 try {
-  // The private key is already validated in config.ts
-  const privateKey = config.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  if (!process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
+    throw new Error('Missing required Firebase credentials');
+  }
 
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: "landhacker-9a7c1",
-      clientEmail: config.FIREBASE_CLIENT_EMAIL,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: privateKey,
     }),
   });
@@ -34,45 +32,30 @@ try {
   throw error;
 }
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2023-10-16",
+  typescript: true,
+});
+
 // Middleware to verify Firebase token
 async function verifyFirebaseToken(req: any, res: any, next: any) {
   try {
-    console.log("▶️ Auth verification started");
-    console.log("Headers:", Object.keys(req.headers));
-
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      console.error("❌ Unauthorized: Missing or invalid Bearer token in header.");
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const token = authHeader.split('Bearer ')[1];
-    if (!token || token === 'undefined' || token === 'null') {
-      console.error("❌ Invalid token format:", token);
-      return res.status(401).json({ message: "Invalid token format" });
-    }
-
-    console.log("🔑 Got token, verifying...");
-
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
-      if (!decodedToken || !decodedToken.uid) {
-        console.error("❌ Token verified but missing UID");
-        return res.status(401).json({ message: "Invalid token content" });
-      }
       req.user = decodedToken;
-      console.log("✅ Firebase token verified successfully for user:", decodedToken.uid);
-      console.log("User data:", JSON.stringify(decodedToken, null, 2));
       next();
-    } catch (error: any) {
-      console.error('❌ Firebase token verification failed:', error.message);
-      console.error('Error details:', error.stack);
-      const errorMessage = error.message || "Invalid token";
-      return res.status(401).json({ message: errorMessage });
+    } catch (error) {
+      console.error('Firebase token verification failed:', error);
+      return res.status(401).json({ message: "Invalid token" });
     }
-  } catch (error: any) {
-    console.error('❌ Error in auth middleware:', error.message);
-    console.error('Error details:', error.stack);
+  } catch (error) {
+    console.error('Error in auth middleware:', error);
     res.status(401).json({ message: "Unauthorized" });
   }
 }
@@ -94,6 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(user);
     } catch (error: any) {
+      console.error('Login error:', error);
       res.status(400).json({ message: error.message });
     }
   });
@@ -279,22 +263,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ prices: similarProperties });
     } catch (error: any) {
-      console.error('Error getting acre prices:', error.message, error.stack);
+      console.error('Error getting acre prices:', error);
       res.status(400).json({ message: error.message });
     }
-  });
-
-  // Add API documentation route
-  app.get('/api/docs', (req, res) => {
-    res.setHeader('Content-Type', 'text/html');
-    res.send(generateApiDocsHtml());
-  });
-
-  // CSRF token endpoint
-  app.get('/api/csrf-token', (req, res) => {
-    // **REPLACE THIS WITH ACTUAL SESSION-BASED TOKEN GENERATION**
-    const placeholderCsrfToken = 'placeholder-csrf-token'; 
-    res.json({ csrfToken: placeholderCsrfToken });
   });
 
 
