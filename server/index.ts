@@ -36,6 +36,24 @@ async function initializeServer() {
 
     // Apply CORS middleware first
     app.use(corsMiddleware);
+    
+    // Add session support
+    app.use(express.session({
+      secret: process.env.SESSION_SECRET || 'landhacker-session-secret',
+      resave: false,
+      saveUninitialized: true,
+      cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax'
+      }
+    }));
+    
+    // Generate CSRF token for all requests
+    app.use(generateCsrfToken);
+    
+    // Add CSP headers
+    app.use(cspMiddleware);
 
     // Parse JSON for all routes except the Stripe webhook
     app.use((req, res, next) => {

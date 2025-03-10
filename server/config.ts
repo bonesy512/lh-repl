@@ -7,6 +7,7 @@ const ConfigSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().min(1, "STRIPE_WEBHOOK_SECRET is required"),
   FIREBASE_CLIENT_EMAIL: z.string().min(1, "FIREBASE_CLIENT_EMAIL is required"),
   FIREBASE_PRIVATE_KEY: z.string().min(1, "FIREBASE_PRIVATE_KEY is required"),
+  SESSION_SECRET: z.string().optional().default("landhacker-session-secret"),
 });
 
 function validateConfig() {

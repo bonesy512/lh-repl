@@ -39,7 +39,7 @@ async function verifyFirebaseToken(req: any, res: any, next: any) {
   try {
     console.log("▶️ Auth verification started");
     console.log("Headers:", Object.keys(req.headers));
-    
+
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
       console.error("❌ Unauthorized: Missing or invalid Bearer token in header.");
@@ -51,7 +51,7 @@ async function verifyFirebaseToken(req: any, res: any, next: any) {
       console.error("❌ Invalid token format:", token);
       return res.status(401).json({ message: "Invalid token format" });
     }
-    
+
     console.log("🔑 Got token, verifying...");
 
     try {
@@ -289,6 +289,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.setHeader('Content-Type', 'text/html');
     res.send(generateApiDocsHtml());
   });
+
+  // CSRF token endpoint
+  app.get('/api/csrf-token', (req, res) => {
+    // **REPLACE THIS WITH ACTUAL SESSION-BASED TOKEN GENERATION**
+    const placeholderCsrfToken = 'placeholder-csrf-token'; 
+    res.json({ csrfToken: placeholderCsrfToken });
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;
