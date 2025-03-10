@@ -34,20 +34,15 @@ interface Invoice {
 }
 
 export default function Dashboard() {
-  console.log("Dashboard component rendering");
   const { toast } = useToast();
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
   const [activeDialog, setActiveDialog] = useState<"analysis" | "marketing" | null>(null);
   const [location, navigate] = useLocation();
   const { user: authUser, isLoading: authLoading } = useAuth();
 
-  console.log("Auth state:", { authUser, authLoading });
-
   // Redirect to login if not authenticated
   useEffect(() => {
-    console.log("Auth check effect running", { authUser, authLoading });
     if (!authLoading && !authUser) {
-      console.log("No authenticated user, redirecting to /auth");
       navigate("/auth");
     }
   }, [authUser, authLoading, navigate]);
@@ -66,17 +61,6 @@ export default function Dashboard() {
   const { data: invoices = [], isLoading: loadingInvoices } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
     enabled: !!authUser,
-  });
-
-  console.log("Query states:", {
-    user,
-    loadingUser,
-    userError,
-    parcelsCount: parcels.length,
-    loadingParcels,
-    parcelsError,
-    invoicesCount: invoices.length,
-    loadingInvoices
   });
 
   function handleParcelSelect(parcel: Parcel) {
@@ -103,7 +87,6 @@ export default function Dashboard() {
 
   // Show loading state
   if (authLoading || loadingUser || loadingParcels) {
-    console.log("Showing loading state");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -113,33 +96,17 @@ export default function Dashboard() {
 
   // Show error state
   if (!authUser) {
-    console.log("No auth user, returning null for redirect");
     return null; // Will be redirected by useEffect
   }
 
-  if (userError) {
-    console.error("User data error:", userError);
+  if (userError || parcelsError) {
+    const error = userError || parcelsError;
     return (
       <div className="container mx-auto px-4 py-8">
         <Alert variant="destructive">
           <AlertDescription>
-            {userError instanceof Error 
-              ? userError.message 
-              : "Failed to load user data. Please try again later."}
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  if (parcelsError) {
-    console.error("Parcels data error:", parcelsError);
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Alert variant="destructive">
-          <AlertDescription>
-            {parcelsError instanceof Error 
-              ? parcelsError.message 
+            {error instanceof Error 
+              ? error.message 
               : "Failed to load dashboard data. Please try again later."}
           </AlertDescription>
         </Alert>
@@ -147,7 +114,6 @@ export default function Dashboard() {
     );
   }
 
-  console.log("Rendering dashboard content");
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8 space-y-8">
@@ -326,7 +292,6 @@ export default function Dashboard() {
                       </div>
                     </div>
                   ))}
-
                   {parcels.length === 0 && (
                     <div className="text-center py-6 text-muted-foreground">
                       No properties analyzed yet
