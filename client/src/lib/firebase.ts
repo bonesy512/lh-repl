@@ -61,7 +61,7 @@ export async function signInWithGoogle() {
 }
 
 export function signOut() {
-  return auth.signOut();
+  return firebaseSignOut(auth);
 }
 
 // Handle redirect result

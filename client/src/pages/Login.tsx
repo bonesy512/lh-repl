@@ -3,23 +3,19 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { handleRedirectResult } from "@/lib/firebase";
+import { signInWithGoogle } from "@/lib/firebase";
 
 export default function Login() {
   const [, navigate] = useLocation();
-  const { user, isLoading, loginMutation } = useAuth();
+  const { user, isLoading } = useAuth();
 
   // Redirect to dashboard if already logged in
   useEffect(() => {
     if (user) {
+      console.log("User already logged in, redirecting to dashboard");
       navigate("/dashboard");
     }
   }, [user, navigate]);
-
-  // Handle redirect result on component mount
-  useEffect(() => {
-    handleRedirectResult().catch(console.error);
-  }, []);
 
   if (isLoading) {
     return (
@@ -69,17 +65,16 @@ export default function Login() {
           </div>
           <Button
             className="w-full"
-            onClick={() => loginMutation.mutate()}
-            disabled={loginMutation.isPending}
+            onClick={async () => {
+              try {
+                console.log("Initiating Google sign-in...");
+                await signInWithGoogle();
+              } catch (error) {
+                console.error("Login failed:", error);
+              }
+            }}
           >
-            {loginMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              "Continue with Google"
-            )}
+            Continue with Google
           </Button>
           <p className="px-8 text-center text-sm text-muted-foreground">
             By clicking continue, you agree to our{" "}

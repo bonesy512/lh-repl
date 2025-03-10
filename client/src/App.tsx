@@ -16,9 +16,6 @@ import BetaLanding from "@/pages/BetaLanding";
 import NotFound from "@/pages/not-found";
 import PurchaseTokens from "@/pages/PurchaseTokens";
 
-// Placeholder AuthPage component
-const AuthPage = () => <div>Authentication Page</div>;
-
 function Router() {
   return (
     <div className="min-h-screen flex flex-col">
@@ -29,7 +26,6 @@ function Router() {
           <Route path="/features" component={Features} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/login" component={Login} />
-          <Route path="/auth" component={AuthPage} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/team" component={TeamMembers} />
           <Route path="/beta" component={BetaLanding} />
