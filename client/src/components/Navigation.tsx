@@ -18,31 +18,12 @@ import {
   CreditCard,
   Wallet
 } from "lucide-react";
-import { signOut, signInWithGoogle } from "@/lib/firebase";
+import { signOut } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useState } from "react";
 
 export function Navigation() {
   const [location, navigate] = useLocation();
   const { user, isLoading } = useAuth();
-  const [isWebView, setIsWebView] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState("");
-
-  useEffect(() => {
-    // Check if we're in a webview context (iframe)
-    const isEmbedded = window.parent !== window;
-    const userAgent = navigator.userAgent;
-    setIsWebView(isEmbedded);
-    setCurrentUrl(window.location.href);
-    
-    console.log("Navigation render state:", {
-      user,
-      isLoading,
-      location,
-      isWebView: isEmbedded,
-      currentUrl: window.location.href
-    });
-  }, [user, isLoading, location]);
 
   const handleSignOut = async () => {
     try {
@@ -53,17 +34,7 @@ export function Navigation() {
     }
   };
 
-  const handleSignIn = async () => {
-    try {
-      console.log("Auth button clicked:", { isWebView });
-      
-      // Use the improved signInWithGoogle that handles webview context
-      await signInWithGoogle();
-    } catch (error) {
-      console.error("Sign in error:", error);
-    }
-  };
-
+  // Get user initials for avatar
   const userInitials = user?.username
     ?.split(" ")
     .map((n) => n[0])
@@ -75,12 +46,13 @@ export function Navigation() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo and Public Links */}
         <div className="flex items-center space-x-8">
-          <div 
-            className="font-bold text-xl cursor-pointer" 
+          <Button 
+            variant="ghost"
+            className="font-bold text-xl p-0" 
             onClick={() => navigate("/")}
           >
             LandHacker
-          </div>
+          </Button>
 
           {!user && !isLoading && (
             <nav className="hidden md:flex items-center space-x-4">
@@ -120,8 +92,12 @@ export function Navigation() {
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.username}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                      <p className="text-sm font-medium leading-none">
+                        {user.username}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -136,7 +112,9 @@ export function Navigation() {
                   <DropdownMenuItem onClick={() => navigate("/team-management")}>
                     <Users2 className="mr-2 h-4 w-4" />
                     <span>Team Management</span>
-                    <span className="ml-auto text-xs text-muted-foreground">$10/seat</span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      $10/seat
+                    </span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/purchase-tokens")}>
                     <CreditCard className="mr-2 h-4 w-4" />
@@ -161,12 +139,9 @@ export function Navigation() {
           ) : (
             <Button 
               variant="ghost" 
-              className="relative h-8 w-8 rounded-full"
-              onClick={handleSignIn}
+              onClick={() => navigate("/login")}
             >
-              <Avatar className="h-8 w-8">
-                <AvatarFallback>?</AvatarFallback>
-              </Avatar>
+              Sign In
             </Button>
           )}
         </div>
