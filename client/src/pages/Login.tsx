@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { signInWithGoogle } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -12,7 +11,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loginMutation, isWebView } = useAuth();
 
   // Redirect if already logged in
   useEffect(() => {
@@ -30,10 +29,8 @@ export default function Login() {
     try {
       setLoading(true);
       setError(null);
-      console.log("Starting Google sign-in process...");
 
-      await signInWithGoogle();
-      // The page will redirect to Google sign-in here
+      await loginMutation.mutateAsync();
 
     } catch (error: any) {
       console.error("Login failed:", error);

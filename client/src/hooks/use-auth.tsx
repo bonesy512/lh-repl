@@ -7,13 +7,13 @@ import {
 import { User } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { signInWithGoogle, auth, getRedirectResult } from "@/lib/firebase";
+import { signInWithGoogle, signOut, auth, getRedirectResult } from "@/lib/firebase";
 
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<void, Error, void>;
+  loginMutation: UseMutationResult<User | null, Error, void>;
   logoutMutation: UseMutationResult<void, Error, void>;
   isWebView: boolean;
 };
@@ -23,14 +23,16 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [isWebView] = useState(window.parent !== window);
 
-  // Handle Firebase redirect result on mount
+  // Handle initial auth state and redirect result
   useEffect(() => {
-    const handleRedirect = async () => {
+    const handleInitialAuth = async () => {
       try {
+        // Check for redirect result
         const result = await getRedirectResult(auth);
         if (result?.user) {
-          // Make backend auth call
+          // Handle successful redirect sign-in
           const res = await apiRequest("POST", "/api/auth/login", {
             uid: result.user.uid,
             email: result.user.email,
@@ -46,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
       } catch (error: any) {
-        console.error("Auth redirect error:", error);
+        console.error("Auth initialization error:", error);
         toast({
           title: "Login failed",
           description: error.message,
@@ -57,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    handleRedirect();
+    handleInitialAuth();
   }, [toast]);
 
   // Get user data
@@ -69,7 +71,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async () => {
-      await signInWithGoogle();
+      if (isWebView) {
+        const newTabUrl = window.location.origin + "/auth";
+        console.log("Opening auth in new tab:", newTabUrl);
+        window.open(newTabUrl, "_blank");
+        toast({
+          title: "Authentication",
+          description: "Please complete login in the new tab.",
+        });
+        return null;
+      }
+
+      const firebaseUser = await signInWithGoogle();
+      if (!firebaseUser) return null;
+
+      // For popup flow, make backend call immediately
+      const res = await apiRequest("POST", "/api/auth/login", {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+      });
+
+      const userData = await res.json();
+      return userData;
+    },
+    onSuccess: (userData: User | null) => {
+      if (userData) {
+        queryClient.setQueryData(["/api/user"], userData);
+        toast({
+          title: "Welcome!",
+          description: "Successfully logged in.",
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -83,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
+      await signOut();
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
@@ -90,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
       toast({
         title: "Logged out",
-        description: "You have been successfully logged out.",
+        description: "Successfully logged out.",
       });
     },
     onError: (error: Error) => {
@@ -110,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: error || null,
         loginMutation,
         logoutMutation,
-        isWebView: window.parent !== window,
+        isWebView,
       }}
     >
       {children}
@@ -121,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within a AuthProvider");
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
