@@ -3,8 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import Stripe from "stripe";
 import { z } from "zod";
-import { insertUserSchema, insertParcelSchema, insertAnalysisSchema, insertCampaignSchema } from "@shared/schema";
-import { TOKEN_PACKAGES } from "../client/src/lib/stripe";
+import { insertUserSchema, insertParcelSchema, insertAnalysisSchema } from "@shared/schema";
 import admin from "firebase-admin";
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -64,6 +63,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth endpoints
   app.post("/api/auth/login", verifyFirebaseToken, async (req, res) => {
     try {
+      console.log('Login attempt with data:', {
+        name: req.user.name,
+        email: req.user.email,
+        uid: req.user.uid
+      });
+
       const data = insertUserSchema.parse({
         username: req.user.name || req.user.email?.split('@')[0] || 'user',
         email: req.user.email,
@@ -72,9 +77,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
+        console.log('Creating new user');
         user = await storage.createUser(data);
       }
 
+      console.log('Login successful:', user);
       res.json(user);
     } catch (error: any) {
       console.error('Login error:', error);
@@ -159,36 +166,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       res.json(analysis);
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
-    }
-  });
-
-  // Campaign endpoints
-  app.get("/api/campaigns", verifyFirebaseToken, async (req, res) => {
-    try {
-      const user = await storage.getUserByFirebaseId(req.user.uid);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const campaigns = await storage.getCampaigns(user.id);
-      res.json(campaigns);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.post("/api/campaigns", verifyFirebaseToken, async (req, res) => {
-    try {
-      const user = await storage.getUserByFirebaseId(req.user.uid);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const data = insertCampaignSchema.parse({ ...req.body, userId: user.id });
-      const campaign = await storage.createCampaign(data);
-      res.json(campaign);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }

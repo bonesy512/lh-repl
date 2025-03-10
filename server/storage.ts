@@ -1,5 +1,5 @@
-import { users, parcels, campaigns, analyses } from "@shared/schema";
-import type { User, InsertUser, Parcel, InsertParcel, Campaign, InsertCampaign, Analysis, InsertAnalysis } from "@shared/schema";
+import { users, parcels, analyses } from "@shared/schema";
+import type { User, InsertUser, Parcel, InsertParcel, Analysis, InsertAnalysis } from "@shared/schema";
 import { db } from "./db";
 import { eq, gte, lte, desc, sql, and, isNotNull } from "drizzle-orm";
 
@@ -14,12 +14,6 @@ export interface IStorage {
   getParcel(id: number): Promise<Parcel | undefined>;
   getParcels(userId: number): Promise<Parcel[]>;
   createParcel(parcel: InsertParcel): Promise<Parcel>;
-
-  // Campaign operations
-  getCampaign(id: number): Promise<Campaign | undefined>;
-  getCampaigns(userId: number): Promise<Campaign[]>;
-  createCampaign(campaign: InsertCampaign): Promise<Campaign>;
-  updateCampaign(id: number, active: boolean): Promise<Campaign>;
 
   // Analysis operations 
   getAnalysis(id: number): Promise<Analysis | undefined>;
@@ -150,30 +144,6 @@ export class DatabaseStorage implements IStorage {
   async createParcel(insertParcel: InsertParcel): Promise<Parcel> {
     const [parcel] = await db.insert(parcels).values(insertParcel).returning();
     return parcel;
-  }
-
-  // Campaign operations
-  async getCampaign(id: number): Promise<Campaign | undefined> {
-    const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, id));
-    return campaign;
-  }
-
-  async getCampaigns(userId: number): Promise<Campaign[]> {
-    return db.select().from(campaigns).where(eq(campaigns.userId, userId));
-  }
-
-  async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
-    const [campaign] = await db.insert(campaigns).values(insertCampaign).returning();
-    return campaign;
-  }
-
-  async updateCampaign(id: number, active: boolean): Promise<Campaign> {
-    const [campaign] = await db
-      .update(campaigns)
-      .set({ active })
-      .where(eq(campaigns.id, id))
-      .returning();
-    return campaign;
   }
 
   // Analysis operations

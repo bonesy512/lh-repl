@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, CreditCard, Package } from "lucide-react";
+import { Check, Package } from "lucide-react";
 import { useLocation } from "wouter";
 import { TOKEN_PACKAGES } from "@/lib/stripe";
 
@@ -10,27 +10,26 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-16">
-        {/* Professional Plan */}
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold mb-4">Simple, Transparent Pricing</h1>
             <p className="text-xl text-muted-foreground">
-              Start with our professional plan and scale your team as needed
+              Access powerful land analysis tools with our professional plan
             </p>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-2">
-            {/* Subscription Plan */}
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Professional Plan */}
             <Card className="relative">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-2xl">Professional Plan</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Everything you need to get started
+                      Everything you need for land analysis
                     </p>
                   </div>
-                  <CreditCard className="h-8 w-8 text-primary" />
+                  <Package className="h-8 w-8 text-primary" />
                 </div>
                 <div className="mt-4">
                   <span className="text-4xl font-bold">$20</span>
@@ -54,10 +53,6 @@ export default function Pricing() {
                   <li className="flex items-center">
                     <Check className="h-5 w-5 text-primary mr-2" />
                     <span>5 Tokens Included Monthly</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Add Team Members ($10/month each)</span>
                   </li>
                 </ul>
                 <Button 

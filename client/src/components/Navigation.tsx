@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CreditCard, Settings, Users, LogOut } from "lucide-react";
+import { Settings, Users, LogOut } from "lucide-react";
 import { signOut } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -88,10 +88,6 @@ export function Navigation() {
                   <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                     <Users className="mr-2 h-4 w-4" />
                     <span>Dashboard</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/subscription")}>
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    <span>Subscription Settings</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
