@@ -1,8 +1,8 @@
-import { pgTable, text, serial, integer, numeric, jsonb, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, numeric, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// User table without subscription fields
+// User table
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   credits: integer("credits").notNull().default(0),
 });
 
+// Parcel table
 export const parcels = pgTable("parcels", {
   id: serial("id").primaryKey(),
   address: text("address").notNull(),
@@ -22,7 +23,7 @@ export const parcels = pgTable("parcels", {
   userId: integer("user_id").references(() => users.id),
 });
 
-// Property analysis table
+// Analysis table
 export const analyses = pgTable("analyses", {
   id: serial("id").primaryKey(),
   parcelId: integer("parcel_id").references(() => parcels.id),
