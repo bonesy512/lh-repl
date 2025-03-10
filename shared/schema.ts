@@ -43,14 +43,14 @@ export const parcels = pgTable("parcels", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
   address: text("address").notNull(),
-  latitude: numeric("latitude").notNull(),
-  longitude: numeric("longitude").notNull(),
-  acres: numeric("acres").notNull(),
+  latitude: text("latitude").notNull(),
+  longitude: text("longitude").notNull(),
+  acres: text("acres").notNull(),
   price: integer("price"),
   details: jsonb("details"),
-  // Add geometry column for PostGIS - using raw SQL without notNull
+  // Add geometry column for PostGIS
   geometry: sql`geometry(Polygon, 4326)`,
-  // Add point location for quick lookups - using raw SQL without notNull
+  // Add point location for quick lookups
   location: sql`geometry(Point, 4326)`,
 });
 
