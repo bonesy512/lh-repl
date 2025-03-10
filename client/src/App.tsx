@@ -4,13 +4,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { queryClient } from "./lib/queryClient";
-import { MainNavigation } from "@/components/MainNavigation";
 import { Footer } from "@/components/Footer";
 import Home from "@/pages/Home";
 import Features from "@/pages/Features";
 import Pricing from "@/pages/Pricing";
 import Dashboard from "@/pages/Dashboard";
-import AppPage from "@/pages/App"; //Renamed to avoid conflict
+import AppPage from "@/pages/App";
 import TeamManagement from "@/pages/TeamManagement";
 import Login from "@/pages/Login";
 import Auth from "@/pages/Auth";
@@ -24,7 +23,13 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 function Router() {
   return (
     <div className="min-h-screen flex flex-col">
-      <MainNavigation />
+      {/* Temporary minimal header */}
+      <header className="border-b">
+        <div className="container mx-auto px-4 h-16 flex items-center">
+          <span className="font-bold">LandHacker (Temporary Header)</span>
+        </div>
+      </header>
+
       <main className="flex-1">
         <Switch>
           <Route path="/" component={Home} />
