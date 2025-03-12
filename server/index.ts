@@ -18,7 +18,6 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Enhanced logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -51,20 +50,9 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
-    // Kill any existing process on port 5000
-    try {
-      console.log('Checking for existing process on port 5000...');
-      await execAsync('fuser -k 5000/tcp');
-      console.log('Killed existing process on port 5000');
-    } catch (error) {
-      // Ignore error if no process was found
-      console.log('No existing process found on port 5000');
-    }
-
     console.log('Registering routes...');
     const server = await registerRoutes(app);
 
-    // Enhanced error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       console.error('Error in request:', err);
       const status = err.status || err.statusCode || 500;
@@ -75,15 +63,46 @@ app.use((req, res, next) => {
     // Skip Vite middleware in Replit environment
     if (process.env.REPL_ID) {
       console.log('Running in Replit environment...');
+      console.log('Building client...');
+      try {
+        // Ensure the public directory exists
+        const publicDir = path.resolve(__dirname, 'public');
+        const distDir = path.resolve(__dirname, '..', 'dist', 'public');
 
-      // Create public directory if it doesn't exist
-      const publicDir = path.resolve(__dirname, 'public');
-      if (!fs.existsSync(publicDir)) {
-        fs.mkdirSync(publicDir, { recursive: true });
+        if (!fs.existsSync(publicDir)) {
+          fs.mkdirSync(publicDir, { recursive: true });
+        }
+
+        // Change to root directory before running build
+        const rootDir = path.resolve(__dirname, '..');
+        console.log('Root directory:', rootDir);
+        process.chdir(rootDir);
+
+        // Build the client
+        await execAsync('npm run build');
+        console.log('Client built successfully');
+
+        // Copy dist to public
+        if (fs.existsSync(distDir)) {
+          await execAsync(`cp -r ${distDir}/* ${publicDir}/`);
+          console.log('Static files copied successfully');
+        } else {
+          console.log(`Checking alternative build directory locations...`);
+          const altDistDir = path.resolve(__dirname, '..', 'dist');
+          if (fs.existsSync(altDistDir)) {
+            await execAsync(`cp -r ${altDistDir}/* ${publicDir}/`);
+            console.log('Static files copied from alternate location successfully');
+          } else {
+            throw new Error(`Build directory not found: ${distDir} or ${altDistDir}`);
+          }
+        }
+
+        serveStatic(app);
+      } catch (buildError) {
+        console.error('Failed to build client:', buildError);
+        console.error('Error details:', buildError instanceof Error ? buildError.stack : buildError);
+        throw buildError;
       }
-
-      // Serve static files
-      serveStatic(app);
     } else if (app.get("env") === "development") {
       console.log('Setting up Vite for development...');
       await setupVite(app, server);
@@ -93,24 +112,13 @@ app.use((req, res, next) => {
     }
 
     const port = 5000;
-    console.log(`Starting server on port ${port}...`);
-
     server.listen({
       port,
       host: "0.0.0.0",
+      reusePort: true,
     }, () => {
       log(`Server started successfully, listening on port ${port}`);
     });
-
-    // Handle graceful shutdown
-    process.on('SIGTERM', () => {
-      console.log('SIGTERM received. Shutting down gracefully...');
-      server.close(() => {
-        console.log('Server closed');
-        process.exit(0);
-      });
-    });
-
   } catch (error) {
     console.error('Failed to start server:', error);
     console.error('Error details:', error instanceof Error ? error.stack : error);

@@ -1,5 +1,5 @@
-import { users, parcels, analyses } from "@shared/schema";
-import type { User, InsertUser, Parcel, InsertParcel, Analysis, InsertAnalysis } from "@shared/schema";
+import { users, parcels, campaigns, analyses } from "@shared/schema";
+import type { User, InsertUser, Parcel, InsertParcel, Campaign, InsertCampaign, Analysis, InsertAnalysis } from "@shared/schema";
 import { db } from "./db";
 import { eq, gte, lte, desc, sql, and, isNotNull } from "drizzle-orm";
 
@@ -14,6 +14,12 @@ export interface IStorage {
   getParcel(id: number): Promise<Parcel | undefined>;
   getParcels(userId: number): Promise<Parcel[]>;
   createParcel(parcel: InsertParcel): Promise<Parcel>;
+
+  // Campaign operations
+  getCampaign(id: number): Promise<Campaign | undefined>;
+  getCampaigns(userId: number): Promise<Campaign[]>;
+  createCampaign(campaign: InsertCampaign): Promise<Campaign>;
+  updateCampaign(id: number, active: boolean): Promise<Campaign>;
 
   // Analysis operations 
   getAnalysis(id: number): Promise<Analysis | undefined>;
@@ -32,167 +38,37 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    try {
-      const [user] = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          email: users.email,
-          firebaseUid: users.firebaseUid,
-          credits: users.credits,
-        })
-        .from(users)
-        .where(eq(users.id, id));
-      return user;
-    } catch (error) {
-      console.error('Error fetching user by ID:', error);
-      throw error;
-    }
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByFirebaseId(firebaseUid: string): Promise<User | undefined> {
-    try {
-      console.log('Fetching user by Firebase UID:', firebaseUid);
-      const [user] = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          email: users.email,
-          firebaseUid: users.firebaseUid,
-          credits: users.credits,
-        })
-        .from(users)
-        .where(eq(users.firebaseUid, firebaseUid));
-      return user;
-    } catch (error) {
-      console.error('Error fetching user by Firebase UID:', error);
-      throw error;
-    }
+    const [user] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    try {
-      console.log('Creating new user:', insertUser);
-      const [user] = await db
-        .insert(users)
-        .values(insertUser)
-        .returning({
-          id: users.id,
-          username: users.username,
-          email: users.email,
-          firebaseUid: users.firebaseUid,
-          credits: users.credits,
-        });
-      return user;
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
-    }
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
   }
 
   async updateUserCredits(id: number, credits: number): Promise<User> {
-    try {
-      const [user] = await db
-        .update(users)
-        .set({ credits })
-        .where(eq(users.id, id))
-        .returning({
-          id: users.id,
-          username: users.username,
-          email: users.email,
-          firebaseUid: users.firebaseUid,
-          credits: users.credits,
-        });
-      return user;
-    } catch (error) {
-      console.error('Error updating user credits:', error);
-      throw error;
-    }
+    const [user] = await db
+      .update(users)
+      .set({ credits })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
   }
 
+  // Parcel operations
   async getParcel(id: number): Promise<Parcel | undefined> {
     const [parcel] = await db.select().from(parcels).where(eq(parcels.id, id));
     return parcel;
   }
 
   async getParcels(userId: number): Promise<Parcel[]> {
-    // For testing, return sample Texas parcels if no parcels exist
-    const existingParcels = await db.select().from(parcels).where(eq(parcels.userId, userId));
-
-    if (existingParcels.length === 0) {
-      // Sample Texas parcels for testing
-      const sampleParcels = [
-        {
-          id: 1,
-          userId,
-          address: JSON.stringify({
-            street: "1234 Ranch Road",
-            city: "Austin",
-            state: "TX",
-            zipcode: "78701"
-          }),
-          acres: 25.5,
-          price: 750000,
-          latitude: 30.2672,
-          longitude: -97.7431,
-          details: JSON.stringify({
-            gisArea: 25.5,
-            marketValue: 750000,
-            landValue: 600000,
-            improvementValue: 150000,
-            county: "Travis"
-          })
-        },
-        {
-          id: 2,
-          userId,
-          address: JSON.stringify({
-            street: "5678 Hill Country Blvd",
-            city: "Dallas",
-            state: "TX",
-            zipcode: "75201"
-          }),
-          acres: 15.3,
-          price: 450000,
-          latitude: 32.7767,
-          longitude: -96.7970,
-          details: JSON.stringify({
-            gisArea: 15.3,
-            marketValue: 450000,
-            landValue: 350000,
-            improvementValue: 100000,
-            county: "Dallas"
-          })
-        },
-        {
-          id: 3,
-          userId,
-          address: JSON.stringify({
-            street: "910 Longhorn Lane",
-            city: "Houston",
-            state: "TX",
-            zipcode: "77002"
-          }),
-          acres: 32.7,
-          price: 980000,
-          latitude: 29.7604,
-          longitude: -95.3698,
-          details: JSON.stringify({
-            gisArea: 32.7,
-            marketValue: 980000,
-            landValue: 800000,
-            improvementValue: 180000,
-            county: "Harris"
-          })
-        }
-      ];
-
-      // Insert sample parcels into database
-      await db.insert(parcels).values(sampleParcels);
-      return sampleParcels;
-    }
-
-    return existingParcels;
+    return db.select().from(parcels).where(eq(parcels.userId, userId));
   }
 
   async createParcel(insertParcel: InsertParcel): Promise<Parcel> {
@@ -200,6 +76,31 @@ export class DatabaseStorage implements IStorage {
     return parcel;
   }
 
+  // Campaign operations
+  async getCampaign(id: number): Promise<Campaign | undefined> {
+    const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, id));
+    return campaign;
+  }
+
+  async getCampaigns(userId: number): Promise<Campaign[]> {
+    return db.select().from(campaigns).where(eq(campaigns.userId, userId));
+  }
+
+  async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
+    const [campaign] = await db.insert(campaigns).values(insertCampaign).returning();
+    return campaign;
+  }
+
+  async updateCampaign(id: number, active: boolean): Promise<Campaign> {
+    const [campaign] = await db
+      .update(campaigns)
+      .set({ active })
+      .where(eq(campaigns.id, id))
+      .returning();
+    return campaign;
+  }
+
+  // Analysis operations
   async getAnalysis(id: number): Promise<Analysis | undefined> {
     const [analysis] = await db.select().from(analyses).where(eq(analyses.id, id));
     return analysis;

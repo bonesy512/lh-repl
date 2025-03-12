@@ -1,1 +1,0 @@
-// MainNavigation component removed

@@ -1,31 +1,60 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
 import { signInWithGoogle } from "@/lib/firebase";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Login() {
   const [, navigate] = useLocation();
-  const { user, isLoading } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const { user } = useAuth();
 
-  // Redirect to dashboard if already logged in
-  useEffect(() => {
-    if (user) {
-      console.log("Auth state detected user, redirecting to dashboard:", {
-        userId: user.id,
-        email: user.email
+  // Redirect if already logged in
+  if (user) {
+    navigate("/dashboard");
+    return null;
+  }
+
+  async function handleLogin() {
+    try {
+      setLoading(true);
+      console.log("Starting Google sign-in process...");
+      const user = await signInWithGoogle();
+      console.log("Google sign-in successful:", user);
+
+      // Create or verify user in our backend
+      console.log("Verifying user with backend...");
+      await apiRequest("POST", "/api/auth/login", {
+        firebaseUid: user.uid,
+        email: user.email,
+        username: user.displayName,
       });
-      navigate("/dashboard");
-    }
-  }, [user, navigate]);
+      console.log("Backend verification successful");
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error("Login failed:", error);
+
+      if (error.code === "auth/unauthorized-domain") {
+        toast({
+          title: "Login Error",
+          description: `This domain is not authorized for login. Please add "${window.location.hostname}" to Firebase authorized domains.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login Failed",
+          description: "An error occurred during login. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -68,15 +97,10 @@ export default function Login() {
           </div>
           <Button
             className="w-full"
-            onClick={async () => {
-              try {
-                console.log("Initiating Google sign-in...");
-                await signInWithGoogle();
-              } catch (error) {
-                console.error("Login failed:", error);
-              }
-            }}
+            onClick={handleLogin}
+            disabled={loading}
           >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Continue with Google
           </Button>
           <p className="px-8 text-center text-sm text-muted-foreground">

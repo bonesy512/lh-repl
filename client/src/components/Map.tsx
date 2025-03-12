@@ -1,20 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl';
-import ReactMapGL, {
-  NavigationControl,
-  GeolocateControl,
-  Marker,
-  Popup,
-  MapLayerMouseEvent
-} from 'react-map-gl';
+import ReactMapGL, { NavigationControl, GeolocateControl, Marker, Source, Layer, Popup } from 'react-map-gl';
+import { MeasurementLayer } from "./map/MeasurementLayer";
+import { MeasurementControls } from "./map/MeasurementControls";
+import { MeasurementCard } from "./map/MeasurementCard";
+import { PropertyCard } from "./PropertyCard";
 import { SearchBar } from "./SearchBar";
+import MapboxDraw from "@mapbox/mapbox-gl-draw";
+import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import type { Parcel } from '@shared/schema';
 import { useAppStore } from "@/utils/store";
-import { LayerControl } from './map/LayerControl';
-import { MeasurementLayer } from './map/MeasurementLayer';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import { LayerControl } from "./map/LayerControl";
 
 interface PropertyMapProps {
   parcels?: Parcel[];
@@ -29,50 +28,47 @@ export default function PropertyMap({
   loading = false,
   onViewMore
 }: PropertyMapProps) {
-  // Center on Texas by default
   const [viewport, setViewport] = useState({
-    latitude: 31.9686,
-    longitude: -99.9018,
-    zoom: 5
+    latitude: 39.8283,
+    longitude: -98.5795,
+    zoom: 3
   });
 
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
   const mapRef = useRef<MapRef>(null);
 
   const {
+    measurementMode,
+    setMeasurementMode,
+    addCompletedMeasurement,
+    clearMeasurements,
     setViewportCenter,
+    addMeasurementPoint,
+    propertyCardVisible,
     selectedProperty,
     setPropertyCardVisible,
     setSelectedProperty,
     shouldCenterMap,
     setShouldCenterMap,
-    activeLayers
+    setIsLoadingProperty
   } = useAppStore();
 
   // Center map when requested (e.g. after search)
   useEffect(() => {
     if (shouldCenterMap && selectedProperty) {
       setViewport({
-        latitude: Number(selectedProperty.latitude),
-        longitude: Number(selectedProperty.longitude),
+        latitude: selectedProperty.latitude,
+        longitude: selectedProperty.longitude,
         zoom: 14
       });
       setShouldCenterMap(false);
     }
   }, [shouldCenterMap, selectedProperty]);
 
-  const handleMapClick = (event: MapLayerMouseEvent) => {
-    // Clear selected parcel when clicking on the map
-    if (!event.defaultPrevented) {
-      setSelectedParcel(null);
-    }
-  };
-
   if (!import.meta.env.VITE_MAPBOX_TOKEN) {
-    console.error('Mapbox token not configured');
     return (
       <div className="w-full h-[600px] flex items-center justify-center bg-muted">
-        <p>Map configuration error. Please check your settings.</p>
+        <p>Mapbox token not configured</p>
       </div>
     );
   }
@@ -85,6 +81,9 @@ export default function PropertyMap({
     );
   }
 
+  // Assuming activeLayers is defined elsewhere in the component
+  const activeLayers = ["terrain", "satellite", "parcel-boundaries"]; //Example, replace with actual logic
+
   return (
     <div className="w-full h-[600px] relative">
       {/* Search Bar */}
@@ -92,10 +91,73 @@ export default function PropertyMap({
         <SearchBar mapRef={mapRef} />
       </div>
 
-      {/* Layer Control */}
-      <div className="absolute top-4 right-4 z-[3]">
+      {/* Map Layers */}
+      {activeLayers.includes("terrain") && (
+        <Source
+          id="terrain"
+          type="raster-dem"
+          url="mapbox://mapbox.mapbox-terrain-dem-v1"
+        >
+          <Layer
+            id="terrain-data"
+            type="hillshade"
+            paint={{
+              "hillshade-exaggeration": 0.6
+            }}
+          />
+        </Source>
+      )}
+
+      {activeLayers.includes("satellite") && (
+        <Source
+          id="satellite"
+          type="raster"
+          url="mapbox://mapbox.satellite"
+        >
+          <Layer
+            id="satellite-layer"
+            type="raster"
+          />
+        </Source>
+      )}
+
+      {activeLayers.includes("parcel-boundaries") && (
+        <Source
+          id="parcel-boundaries"
+          type="vector"
+          url="mapbox://mapbox.boundaries-adm2"
+        >
+          <Layer
+            id="parcel-lines"
+            type="line"
+            source-layer="boundaries_admin_2"
+            paint={{
+              "line-color": "#FF0000",
+              "line-width": 1
+            }}
+          />
+        </Source>
+      )}
+
+
+      {/* Measurement Controls */}
+      <div className="absolute bottom-[175px] left-2.5 z-[1] flex flex-col gap-2">
         <LayerControl />
+        <MeasurementControls />
       </div>
+
+      {measurementMode !== 'none' && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl pl-8 z-[2]">
+          <MeasurementCard />
+        </div>
+      )}
+
+      {/* Property Card */}
+      {propertyCardVisible && selectedProperty && (
+        <div className="absolute top-4 right-4 z-[3] w-[400px] max-w-[calc(100vw-2rem)]">
+          <PropertyCard onViewMore={onViewMore} />
+        </div>
+      )}
 
       <ReactMapGL
         ref={mapRef}
@@ -104,15 +166,19 @@ export default function PropertyMap({
           setViewport(evt.viewState);
           setViewportCenter([evt.viewState.longitude, evt.viewState.latitude]);
         }}
-        onClick={handleMapClick}
         mapboxAccessToken={import.meta.env.VITE_MAPBOX_TOKEN}
-        mapStyle={activeLayers.includes('satellite') 
-          ? "mapbox://styles/mapbox/satellite-streets-v12"
-          : "mapbox://styles/mapbox/streets-v12"
-        }
+        mapStyle="mapbox://styles/mapbox/streets-v11"
         style={{ width: '100%', height: '100%' }}
-        terrain={activeLayers.includes('terrain') ? { source: 'mapbox-dem', exaggeration: 1.5 } : undefined}
+        onClick={(evt) => {
+          // If in measurement mode, add point
+          if (measurementMode !== 'none') {
+            addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
+          }
+        }}
       >
+        {/* Measurement Layer */}
+        <MeasurementLayer />
+
         {/* Map Controls */}
         <NavigationControl position="bottom-left" />
         <GeolocateControl
@@ -121,57 +187,53 @@ export default function PropertyMap({
           trackUserLocation={true}
         />
 
-        {/* Measurement Layer */}
-        <MeasurementLayer />
-
         {/* Property Markers */}
-        {parcels.map((parcel) => {
-          const lat = Number(parcel.latitude);
-          const lng = Number(parcel.longitude);
-
-          if (isNaN(lat) || isNaN(lng)) {
-            console.warn(`Invalid coordinates for parcel ${parcel.id}`);
-            return null;
-          }
-
-          return (
-            <Marker
-              key={parcel.id}
-              latitude={lat}
-              longitude={lng}
-              onClick={e => {
-                e.originalEvent.stopPropagation();
+        {parcels.map((parcel) => (
+          <Marker
+            key={parcel.id}
+            latitude={Number(parcel.latitude)}
+            longitude={Number(parcel.longitude)}
+            onClick={evt => {
+              if (measurementMode !== 'none') {
+                addMeasurementPoint([evt.lngLat.lng, evt.lngLat.lat]);
+              } else {
                 setSelectedParcel(parcel);
                 setSelectedProperty({
                   propertyId: parcel.id,
-                  address: parcel.address,
-                  latitude: lat,
-                  longitude: lng
+                  address: {
+                    streetAddress: parcel.address,
+                    city: parcel.city,
+                    state: parcel.state,
+                    zipcode: parcel.zipcode
+                  },
+                  ownerName: parcel.ownerName,
+                  latitude: Number(parcel.latitude),
+                  longitude: Number(parcel.longitude)
                 });
                 setPropertyCardVisible(true);
                 if (onParcelSelect) {
                   onParcelSelect(parcel);
                 }
-              }}
-            >
-              <div className="text-primary cursor-pointer">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="24"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-              </div>
-            </Marker>
-          );
-        })}
+              }
+            }}
+          >
+            <div className="text-primary cursor-pointer">
+              <svg
+                viewBox="0 0 24 24"
+                width="24"
+                height="24"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
+          </Marker>
+        ))}
 
         {/* Selected Property Popup */}
         {selectedParcel && (
@@ -182,12 +244,7 @@ export default function PropertyMap({
             closeButton={true}
           >
             <div className="p-2">
-              <h3 className="font-semibold">
-                {typeof selectedParcel.address === 'string' 
-                  ? selectedParcel.address
-                  : JSON.stringify(selectedParcel.address)
-                }
-              </h3>
+              <h3 className="font-semibold">{selectedParcel.address}</h3>
               <p className="text-sm text-muted-foreground">
                 {selectedParcel.acres} acres
               </p>

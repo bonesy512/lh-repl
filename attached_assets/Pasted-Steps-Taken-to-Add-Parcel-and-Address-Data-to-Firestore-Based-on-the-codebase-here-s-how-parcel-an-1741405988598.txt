@@ -1,0 +1,106 @@
+Steps Taken to Add Parcel and Address Data to Firestore
+Based on the codebase, here's how parcel and address data is added to Firestore in the Landhacker app:
+
+1. Data Collection Process
+When a user selects or searches for a property, the app follows these steps:
+
+Property Selection on Map:
+
+When a user clicks on a parcel on the map, the Map component (Map.tsx) detects this interaction
+The app identifies the parcel by its ID in the map data layer (via feature.properties?.Prop_ID)
+This triggers the fetchPropertyDetails function with the location coordinates and feature data
+Property Search:
+
+Alternatively, when a user searches for an address using the SearchBar component
+The app gets coordinates from the search result
+This also triggers the property details fetching process
+2. Fetching Property Data
+Once a property is identified, the app:
+
+Calls Backend APIs to collect data:
+
+Makes API calls to get property details
+Fetches price estimates using the scrape API (/scrape/estimates endpoint)
+Gets distance to nearest city
+Retrieves comparable acre prices for similar properties
+Assembles Complete Property Object:
+
+Creates a PropertyDetailsResponse object with all collected data
+This includes parcel data, address info, price comparisons, and analysis
+3. Saving to Firestore
+The actual saving to Firestore happens through the savePropertyQuery function in firebase.ts:
+
+Copy snippet
+export const savePropertyQuery = async (userId: string, property: PropertyDetailsResponse) => {
+  try {
+    // Replace undefined values with null in the property object
+    const cleanProperty = replaceUndefinedWithNull(property);
+    
+    const queryData = {
+      userId,
+      savedAt: new Date(),
+      ...cleanProperty,
+    };
+
+    // Check if a document with this zpid already exists for this user
+    const q = query(
+      collection(db, "queries"), 
+      where("userId", "==", userId),
+      where("zpid", "==", property.zpid)
+    );
+    const querySnapshot = await getDocs(q);
+    
+    let docId;
+    if (!querySnapshot.empty) {
+      // Update existing document
+      docId = querySnapshot.docs[0].id;
+      await setDoc(doc(db, "queries", docId), queryData);
+    } else {
+      // Create new document
+      const docRef = await addDoc(collection(db, "queries"), queryData);
+      docId = docRef.id;
+    }
+    
+    return docId;
+  } catch (error) {
+    console.error("Error saving property query:", error);
+    throw error;
+  }
+};
+4. When Property Data Gets Saved
+Property data is saved to Firestore in several scenarios:
+
+Manual Save by User:
+
+When a user views property details and clicks a save button
+This is usually triggered from the PropertyDialog component
+After Price Generation:
+
+When a user uses credits to generate an AI price prediction
+After the prediction is complete, the updated property with price data is saved
+Auto-Save:
+
+Some implementations may auto-save recently viewed properties
+5. Data Sanitization
+Before saving to Firestore, data is sanitized:
+
+Handling Undefined Values:
+
+The replaceUndefinedWithNull function converts all undefined values to null
+This prevents Firestore errors, as Firestore cannot store undefined values
+Data Formatting:
+
+Dates are converted to proper Firestore Date objects
+Nested objects are recursively processed
+6. Deduplication Logic
+The app includes logic to prevent duplicate properties:
+
+Query by ZPID:
+
+Before saving, it checks if a property with the same ZPID exists for the user
+If found, it updates the existing document instead of creating a new one
+Document IDs:
+
+For new properties, Firestore auto-generates document IDs
+For existing properties, it maintains the same document ID
+This approach ensures that users have a clean history of saved properties without duplicates, while maintaining the ability to update property information when new data becomes available.

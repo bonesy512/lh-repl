@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import Stripe from "stripe";
 import { z } from "zod";
-import { insertUserSchema, insertParcelSchema, insertAnalysisSchema } from "@shared/schema";
+import { insertUserSchema, insertParcelSchema, insertAnalysisSchema, insertCampaignSchema } from "@shared/schema";
+import { TOKEN_PACKAGES } from "../client/src/lib/stripe";
 import admin from "firebase-admin";
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -63,12 +64,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth endpoints
   app.post("/api/auth/login", verifyFirebaseToken, async (req, res) => {
     try {
-      console.log('Login attempt with data:', {
-        name: req.user.name,
-        email: req.user.email,
-        uid: req.user.uid
-      });
-
       const data = insertUserSchema.parse({
         username: req.user.name || req.user.email?.split('@')[0] || 'user',
         email: req.user.email,
@@ -77,19 +72,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
-        console.log('Creating new user');
-        try {
-          user = await storage.createUser(data);
-        } catch (createError) {
-          console.error('Error creating user:', createError);
-          return res.status(500).json({ 
-            message: "Failed to create user account",
-            error: createError instanceof Error ? createError.message : String(createError)
-          });
-        }
+        user = await storage.createUser(data);
       }
 
-      console.log('Login successful:', user);
       res.json(user);
     } catch (error: any) {
       console.error('Login error:', error);
@@ -100,21 +85,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User endpoints
   app.get("/api/user", verifyFirebaseToken, async (req, res) => {
     try {
-      console.log('Fetching user with Firebase UID:', req.user.uid);
       const user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
-        console.log('User not found in database for UID:', req.user.uid);
         return res.status(404).json({ message: "User not found" });
       }
-      console.log('User found:', user);
       res.json(user);
     } catch (error: any) {
-      console.error('Error fetching user:', error);
-      console.error('Error details:', error.stack);
-      res.status(500).json({ 
-        message: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      });
+      res.status(500).json({ message: error.message });
     }
   });
 
@@ -129,7 +106,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parcels = await storage.getParcels(user.id);
       res.json(parcels);
     } catch (error: any) {
-      console.error('Error fetching parcels:', error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -186,80 +162,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Team Management endpoints
-  app.get("/api/team", verifyFirebaseToken, async (req, res) => {
+  // Campaign endpoints
+  app.get("/api/campaigns", verifyFirebaseToken, async (req, res) => {
     try {
       const user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Try to get team data from storage
-      let teamData = await storage.getTeamByOwnerId(user.id);
-
-      // If no team data exists, create mock data
-      if (!teamData) {
-        teamData = {
-          ownerId: user.id,
-          seats: 3,
-          members: [
-            {
-              id: user.id,
-              name: user.username,
-              email: user.email,
-              role: "Owner",
-              allocatedCredits: user.credits
-            }
-            // Additional members would be fetched from storage
-          ]
-        };
-      }
-
-      res.json(teamData);
+      const campaigns = await storage.getCampaigns(user.id);
+      res.json(campaigns);
     } catch (error: any) {
-      console.error('Error fetching team data:', error);
       res.status(500).json({ message: error.message });
     }
   });
 
-  // Add seat endpoint
-  app.post("/api/team/seats", verifyFirebaseToken, async (req, res) => {
+  app.post("/api/campaigns", verifyFirebaseToken, async (req, res) => {
     try {
       const user = await storage.getUserByFirebaseId(req.user.uid);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // This would connect to Stripe to process payment
-      // For now, just return success response
-      res.json({ success: true, message: "Seat added successfully" });
+      const data = insertCampaignSchema.parse({ ...req.body, userId: user.id });
+      const campaign = await storage.createCampaign(data);
+      res.json(campaign);
     } catch (error: any) {
-      console.error('Error adding seat:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ message: error.message });
     }
   });
 
-  // Invite team member endpoint
-  app.post("/api/team/invite", verifyFirebaseToken, async (req, res) => {
+  // Payment endpoints
+  app.post("/api/create-payment-intent", async (req, res) => {
     try {
-      const user = await storage.getUserByFirebaseId(req.user.uid);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      const { packageId } = z.object({
+        packageId: z.enum(["basic", "pro", "enterprise"])
+      }).parse(req.body);
 
-      const { email } = req.body;
-      if (!email) {
-        return res.status(400).json({ message: "Email is required" });
-      }
+      const pkg = TOKEN_PACKAGES[packageId];
 
-      // This would send an invitation email and store the invitation in the database
-      // For now, just return success response
-      res.json({ success: true, message: `Invitation sent to ${email}` });
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: pkg.price,
+        currency: "usd",
+        metadata: {
+          packageId,
+          tokens: pkg.tokens.toString(),
+        },
+      });
+
+      res.json({ clientSecret: paymentIntent.client_secret });
     } catch (error: any) {
-      console.error('Error inviting team member:', error);
-      res.status(500).json({ message: error.message });
+      res.status(400).json({ message: error.message });
     }
   });
+
+  // Stripe webhook
+  app.post("/api/webhook", async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+
+    try {
+      const event = stripe.webhooks.constructEvent(
+        req.body,
+        sig as string,
+        process.env.STRIPE_WEBHOOK_SECRET as string
+      );
+
+      if (event.type === "payment_intent.succeeded") {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const tokens = parseInt(paymentIntent.metadata.tokens);
+        const userId = parseInt(paymentIntent.metadata.userId);
+
+        const user = await storage.getUser(userId);
+        if (user) {
+          await storage.updateUserCredits(userId, user.credits + tokens);
+        }
+      }
+
+      res.json({ received: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  // Add new endpoint for getting acre prices
+  app.post("/api/acres-prices", verifyFirebaseToken, async (req, res) => {
+    try {
+      const { city, acres, zip_code } = z.object({
+        city: z.string(),
+        acres: z.number(),
+        zip_code: z.string()
+      }).parse(req.body);
+
+      // Get similar properties from database
+      const similarProperties = await storage.getSimilarProperties({
+        city,
+        acres: acres * 0.75, // Lower bound (within 25%)
+        maxAcres: acres * 1.25, // Upper bound (within 25%)
+        zipCode: zip_code
+      });
+
+      res.json({ prices: similarProperties });
+    } catch (error: any) {
+      console.error('Error getting acre prices:', error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;
